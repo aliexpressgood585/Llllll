@@ -116,23 +116,23 @@ export function IvSurface({ s }: { s: DeskSnapshot }) {
     }
     ctx.fillStyle = '#5f6f82';
     ctx.fillText('IV %', 6, 12);
-    ctx.fillText('Days to Expiry →', W - 100, H - 6);
+    ctx.fillText('← ימים לפקיעה', W - 90, H - 6);
   }, [surf, size.width, s.now]);
 
   const atm = s.assets[asset];
   return (
     <Panel
-      title="Real-Time IV Surface 3D"
+      title="משטח תנודתיות גלומה תלת-ממדי"
       right={ASSET_LIST.map((a) => (
         <Chip key={a} active={a === asset} onClick={() => setAsset(a)}>{a}</Chip>
       ))}
     >
       <div ref={wrapRef} className="relative w-full">
         <canvas ref={canvasRef} className="block" />
-        <div className="num absolute right-0 top-0 text-right text-[10px] leading-tight text-dim">
+        <div className="num absolute left-0 top-0 text-start text-[10px] leading-tight text-dim">
           <div>ATM <span className="text-white">{(atm.atmIv * 100).toFixed(1)}</span></div>
           <div>30D <span className="text-white">{(atm.longIv * 100).toFixed(1)}</span></div>
-          <div>SKEW <span className={atm.skew < 0 ? 'text-down' : 'text-up'}>{atm.skew.toFixed(2)}</span></div>
+          <div>סקיו <span className={atm.skew < 0 ? 'text-down' : 'text-up'}>{atm.skew.toFixed(2)}</span></div>
         </div>
       </div>
     </Panel>

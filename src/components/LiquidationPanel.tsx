@@ -49,7 +49,7 @@ function Heatmap({ s, asset }: { s: DeskSnapshot; asset: Asset }) {
           return (
             <g key={i}>
               <rect x={cx - 2.5} y={H - 20 - h} width={5} height={h} rx={1} fill={long ? '#ff4d5e' : '#1fd69a'} opacity={0.55 + 0.45 * (c.notional / maxN)}>
-                <title>{`${c.side} liq @ ${fmtNum(c.price, ASSETS[asset].decimals)} · ${fmtCompactUsd(c.notional)} · ${c.leverage}x`}</title>
+                <title>{`חיסול ${c.side === 'LONG' ? 'לונג' : 'שורט'} @ ${fmtNum(c.price, ASSETS[asset].decimals)} · ${fmtCompactUsd(c.notional)} · ${c.leverage}x`}</title>
               </rect>
               {labelled.has(c) && (
                 <text x={cx} y={H - 24 - h} fontSize="8.5" textAnchor="middle" fill={long ? '#ff8a95' : '#6ff0c4'} fontFamily="JetBrains Mono, ui-monospace, monospace">{fmtCompactUsd(c.notional)}</text>
@@ -62,8 +62,8 @@ function Heatmap({ s, asset }: { s: DeskSnapshot; asset: Asset }) {
         ))}
         <line x1={W / 2} x2={W / 2} y1={0} y2={H - 4} stroke="#22d3ee" strokeWidth={1.5} />
         <text x={W / 2 + 4} y={34} fontSize="9.5" fill="#22d3ee" fontFamily="JetBrains Mono, ui-monospace, monospace">{fmtNum(a.spot, ASSETS[asset].decimals)}</text>
-        <text x={4} y={22} fontSize="9" fill="#ff8a95" fontFamily="Inter, system-ui, sans-serif">◀ LONG LIQUIDATIONS</text>
-        <text x={W - 4} y={22} fontSize="9" fill="#6ff0c4" textAnchor="end" fontFamily="Inter, system-ui, sans-serif">SHORT LIQUIDATIONS ▶</text>
+        <text x={4} y={22} fontSize="9" fill="#ff8a95" fontFamily="Inter, system-ui, sans-serif">◀ חיסולי לונגים</text>
+        <text x={W - 4} y={22} fontSize="9" fill="#6ff0c4" textAnchor="end" fontFamily="Inter, system-ui, sans-serif">חיסולי שורטים ▶</text>
       </svg>
     </div>
   );
@@ -81,7 +81,7 @@ export function LiquidationPanel({ s }: { s: DeskSnapshot }) {
     <Panel
       title={
         <span className="flex items-center gap-2">
-          Liquidation Pressure <span className="text-muted">·</span> <span className="text-dim">market leverage map + account liquidation risk</span>
+          לחץ חיסולים <span className="text-muted">·</span> <span className="text-dim">מפת מינוף בשוק + סיכון חיסול החשבון</span>
         </span>
       }
       right={ASSET_LIST.map((x) => (
@@ -94,28 +94,28 @@ export function LiquidationPanel({ s }: { s: DeskSnapshot }) {
           <Heatmap s={s} asset={asset} />
           <div className="mt-1 grid grid-cols-2 gap-2 text-[10px]">
             <div>
-              <div className="flex justify-between text-muted"><span>Cascade risk ↓ (longs ≤3%)</span><span className="num text-down">{(a.cascadeRiskDown * 100).toFixed(0)}%</span></div>
+              <div className="flex justify-between text-muted"><span>סיכון מפל ↓ (לונגים ≤3%)</span><span className="num text-down">{(a.cascadeRiskDown * 100).toFixed(0)}%</span></div>
               <Bar value={a.cascadeRiskDown} tone="bg-down" />
             </div>
             <div>
-              <div className="flex justify-between text-muted"><span>Squeeze risk ↑ (shorts ≤3%)</span><span className="num text-up">{(a.cascadeRiskUp * 100).toFixed(0)}%</span></div>
+              <div className="flex justify-between text-muted"><span>סיכון סקוויז ↑ (שורטים ≤3%)</span><span className="num text-up">{(a.cascadeRiskUp * 100).toFixed(0)}%</span></div>
               <Bar value={a.cascadeRiskUp} tone="bg-up" />
             </div>
           </div>
         </div>
 
         <div className="text-[11px]">
-          <div className="mb-1 text-[9.5px] font-semibold uppercase tracking-wider text-muted">Market · {asset}-PERP</div>
-          <Row label="Longs liquidated 1h" value={fmtCompactUsd(a.liq1hLong)} tone={a.liq1hLong > 0 ? 'text-down' : 'text-muted'} />
-          <Row label="Shorts liquidated 1h" value={fmtCompactUsd(a.liq1hShort)} tone={a.liq1hShort > 0 ? 'text-up' : 'text-muted'} />
-          <Row label="Nearest long cluster" value={dist(a.nearestLong)} tone="text-down" />
-          <Row label="Nearest short cluster" value={dist(a.nearestShort)} tone="text-up" />
-          <Row label="Funding (8h)" value={`${(a.funding * 100).toFixed(4)}%`} tone={a.funding >= 0 ? 'text-up' : 'text-down'} />
-          <Row label="Perp open interest" value={fmtCompactUsd(a.perpOi)} />
+          <div className="mb-1 text-[9.5px] font-semibold uppercase tracking-wider text-muted">שוק · {asset}-PERP</div>
+          <Row label="לונגים שחוסלו בשעה" value={fmtCompactUsd(a.liq1hLong)} tone={a.liq1hLong > 0 ? 'text-down' : 'text-muted'} />
+          <Row label="שורטים שחוסלו בשעה" value={fmtCompactUsd(a.liq1hShort)} tone={a.liq1hShort > 0 ? 'text-up' : 'text-muted'} />
+          <Row label="אשכול לונגים קרוב" value={dist(a.nearestLong)} tone="text-down" />
+          <Row label="אשכול שורטים קרוב" value={dist(a.nearestShort)} tone="text-up" />
+          <Row label="מימון (8 שעות)" value={`${(a.funding * 100).toFixed(4)}%`} tone={a.funding >= 0 ? 'text-up' : 'text-down'} />
+          <Row label="עניין פתוח בפרפטואלי" value={fmtCompactUsd(a.perpOi)} />
           <div className="scroll-thin mt-1 max-h-[54px] overflow-auto">
             {s.marketLiqs.slice(0, 6).map((e, i) => (
               <div key={i} className="num flex justify-between text-[9.5px] text-dim">
-                <span>{fmtTime(e.time, false)} {e.asset} {e.side === 'LONG' ? 'LONGS' : 'SHORTS'}</span>
+                <span>{fmtTime(e.time, false)} {e.asset} {e.side === 'LONG' ? 'לונגים' : 'שורטים'}</span>
                 <span className={e.side === 'LONG' ? 'text-down' : 'text-up'}>{fmtCompactUsd(e.notional)} {(e.impactPct * 100).toFixed(2)}%</span>
               </div>
             ))}
@@ -124,30 +124,30 @@ export function LiquidationPanel({ s }: { s: DeskSnapshot }) {
 
         <div className="text-[11px]">
           <div className="mb-1 flex items-center justify-between text-[9.5px] font-semibold uppercase tracking-wider text-muted">
-            <span>Account · Margin</span>
-            {danger && <span className="pulse-dot rounded-sm bg-down px-1 text-white">LIQ DANGER</span>}
+            <span>חשבון · בטחונות</span>
+            {danger && <span className="pulse-dot rounded-sm bg-down px-1 text-white">סכנת חיסול</span>}
           </div>
           <div className="flex justify-between text-[10px] text-muted">
-            <span>Margin ratio (MM / equity)</span>
+            <span>יחס בטחונות (MM / הון)</span>
             <span className={`num font-semibold ${mr > 0.85 ? 'text-down' : mr > 0.6 ? 'text-warn' : 'text-up'}`}>{(mr * 100).toFixed(1)}%</span>
           </div>
           <div className="relative">
             <Bar value={mr} tone={mrTone} className="h-2.5" />
             <div className="absolute inset-y-0 left-full -ml-px w-px bg-down" />
           </div>
-          <div className="num mt-0.5 flex justify-between text-[9px] text-muted"><span>0%</span><span className="text-warn">60%</span><span className="text-down">100% = LIQ</span></div>
-          <Row label="Equity / IM / MM" value={`${fmtUsd(acct.equity)} / ${fmtUsd(acct.im)} / ${fmtUsd(acct.mm)}`} />
-          <Row label="Liq. trigger (BTC-led) ↓" value={s.risk.liqDown === null ? '> 40%' : `${(s.risk.liqDown * 100).toFixed(1)}%`} tone={s.risk.liqDown !== null ? 'text-down' : 'text-up'} />
-          <Row label="Liq. trigger ↑" value={s.risk.liqUp === null ? '> 40%' : `+${(s.risk.liqUp * 100).toFixed(1)}%`} tone={s.risk.liqUp !== null ? 'text-down' : 'text-up'} />
-          <Row label="Forced liquidations" value={`${acct.liqCount} (acct) · ${s.blowups} wipeouts`} tone={acct.liqCount ? 'text-down' : 'text-dim'} />
+          <div className="num mt-0.5 flex justify-between text-[9px] text-muted"><span>0%</span><span className="text-warn">60%</span><span className="text-down">100% = חיסול</span></div>
+          <Row label="הון / IM / MM" value={`${fmtUsd(acct.equity)} / ${fmtUsd(acct.im)} / ${fmtUsd(acct.mm)}`} />
+          <Row label="טריגר חיסול (הובלת BTC) ↓" value={s.risk.liqDown === null ? 'מעל 40%' : `${(s.risk.liqDown * 100).toFixed(1)}%`} tone={s.risk.liqDown !== null ? 'text-down' : 'text-up'} />
+          <Row label="טריגר חיסול ↑" value={s.risk.liqUp === null ? 'מעל 40%' : `+${(s.risk.liqUp * 100).toFixed(1)}%`} tone={s.risk.liqUp !== null ? 'text-down' : 'text-up'} />
+          <Row label="חיסולים כפויים" value={`${acct.liqCount} (חשבון) · ${s.blowups} מחיקות`} tone={acct.liqCount ? 'text-down' : 'text-dim'} />
           <div className="scroll-thin mt-1 max-h-[40px] overflow-auto">
             {s.accountLiqs.slice(0, 4).map((e, i) => (
               <div key={i} className="num flex justify-between text-[9.5px] text-down">
                 <span>{fmtTime(e.time, false)} {e.strategy}</span>
-                <span>{fmtUsd(e.lossUsd)} fee {fmtUsd(e.feeUsd, 1)}</span>
+                <span>{fmtUsd(e.lossUsd)} עמלה {fmtUsd(e.feeUsd, 1)}</span>
               </div>
             ))}
-            {!s.accountLiqs.length && <div className="text-[9.5px] text-muted">No forced liquidations yet</div>}
+            {!s.accountLiqs.length && <div className="text-[9.5px] text-muted">אין עדיין חיסולים כפויים</div>}
           </div>
         </div>
       </div>

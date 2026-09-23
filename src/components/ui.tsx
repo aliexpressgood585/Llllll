@@ -4,7 +4,7 @@ export function Panel({ title, right, children, className = '', bodyClass = '' }
   return (
     <section className={`panel-glow flex flex-col rounded-[3px] border border-line bg-panel ${className}`}>
       <header className="flex items-center justify-between gap-2 border-b border-line px-2.5 py-1.5">
-        <h2 className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-text">{title}</h2>
+        <h2 className="truncate text-[11px] font-semibold tracking-[0.04em] text-text">{title}</h2>
         {right && <div className="flex shrink-0 items-center gap-1">{right}</div>}
       </header>
       <div className={`min-h-0 flex-1 p-2.5 ${bodyClass}`}>{children}</div>
@@ -56,6 +56,8 @@ export function Bar({ value, max = 1, tone = 'bg-accent', className = '' }: { va
     </div>
   );
 }
+
+export const sevLabel: Record<string, string> = { LOW: 'נמוכה', MEDIUM: 'בינונית', HIGH: 'גבוהה', CRITICAL: 'קריטית' };
 
 export const sevTone: Record<string, string> = {
   LOW: 'text-up',

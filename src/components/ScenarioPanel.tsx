@@ -10,11 +10,11 @@ export function ScenarioPanel({ s }: { s: DeskSnapshot }) {
     return v >= 0 ? `rgba(31,214,154,${0.1 + t * 0.6})` : `rgba(255,77,94,${0.1 + t * 0.7})`;
   };
   return (
-    <Panel title="Scenario Analysis (What-If)" right={<span className="num text-[10px] text-muted">BTC {fmtNum(s.assets.BTC.spot, 0)} · β-shock ETH 1.2 SOL 1.5</span>}>
+    <Panel title="ניתוח תרחישים (מה-אם)" right={<span className="num text-[10px] text-muted">BTC {fmtNum(s.assets.BTC.spot, 0)} · זעזוע β ‏ETH 1.2 SOL 1.5</span>}>
       <table className="num w-full border-separate border-spacing-[2px] text-[10.5px]">
         <thead>
           <tr className="text-[9.5px] uppercase text-muted">
-            <th className="text-left font-semibold">IV \ Px</th>
+            <th className="text-start font-semibold">IV \ מחיר</th>
             {spotMoves.map((m) => (
               <th key={m} className="font-semibold">{m > 0 ? '+' : ''}{(m * 100).toFixed(0)}%</th>
             ))}
@@ -33,7 +33,7 @@ export function ScenarioPanel({ s }: { s: DeskSnapshot }) {
           ))}
         </tbody>
       </table>
-      <div className="mt-1 text-[9.5px] text-muted">Full BS revaluation of every leg · % of equity: worst {((Math.min(...grid.flat()) / eq) * 100).toFixed(0)}%</div>
+      <div className="mt-1 text-[9.5px] text-muted">שערוך BS מלא לכל רגל · % מההון: הגרוע ביותר {((Math.min(...grid.flat()) / eq) * 100).toFixed(0)}%</div>
     </Panel>
   );
 }

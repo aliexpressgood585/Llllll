@@ -89,12 +89,12 @@ export const STRATEGY_COLORS: Record<StrategyKind, string> = {
 };
 
 export const STRATEGY_NAMES: Record<StrategyKind, string> = {
-  IRON_CONDOR: 'Iron Condor',
-  SHORT_STRANGLE: 'Short Strangle',
-  CALENDAR: 'Calendar',
-  RISK_REVERSAL: 'Risk Reversal',
-  DIRECTIONAL: 'Directional',
-  LONG_STRADDLE: 'Long Straddle',
+  IRON_CONDOR: 'איירון קונדור',
+  SHORT_STRANGLE: 'שורט סטרנגל',
+  CALENDAR: 'קלנדר',
+  RISK_REVERSAL: 'ריסק ריברסל',
+  DIRECTIONAL: 'כיווני',
+  LONG_STRADDLE: 'לונג סטראדל',
 };
 
 /** Aggression knobs. */

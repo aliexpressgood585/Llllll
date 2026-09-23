@@ -77,7 +77,7 @@ export function buildPlan(kind: StrategyKind, asset: Asset, market: MarketSim, n
       const t: OptionType = bias > 0 ? 'C' : 'P';
       const s = sd(expiry, t, bias > 0 ? 0.35 : -0.35);
       legs = [leg(asset, expiry, s, t, 1)];
-      label = `${asset} ${k(s)}${t} ${bias > 0 ? 'LONG CALL' : 'LONG PUT'}`;
+      label = `${asset} ${k(s)}${t} ${bias > 0 ? 'לונג קול' : 'לונג פוט'}`;
       break;
     }
     case 'LONG_STRADDLE': {
@@ -105,13 +105,13 @@ export function candidates(_asset: Asset, ctx: SignalContext, rng: Rng): { kind:
   const p = ctx.probs;
   const out: { kind: StrategyKind; bias: 1 | -1; score: number; note: string }[] = [];
   const noise = () => 0.12 * rng.normal();
-  out.push({ kind: 'IRON_CONDOR', bias: 1, score: 0.15 + p.NEUTRAL * 1.1 + ctx.ivRank * 0.5 - p.EXTREME * 1.5 + noise(), note: `neutral ${(p.NEUTRAL * 100).toFixed(0)}% / IVR ${(ctx.ivRank * 100).toFixed(0)}` });
-  out.push({ kind: 'SHORT_STRANGLE', bias: 1, score: 0.1 + p.NEUTRAL * 1.2 + ctx.ivRank * 0.7 - p.EXTREME * 2 + noise(), note: `harvest rich vol IVR ${(ctx.ivRank * 100).toFixed(0)}` });
-  out.push({ kind: 'CALENDAR', bias: 1, score: 0.45 + Math.max(-0.4, Math.min(0.45, ctx.termSpread * 4)) + p.NEUTRAL * 0.3 + noise(), note: `term spread ${(ctx.termSpread * 100).toFixed(1)}v` });
+  out.push({ kind: 'IRON_CONDOR', bias: 1, score: 0.15 + p.NEUTRAL * 1.1 + ctx.ivRank * 0.5 - p.EXTREME * 1.5 + noise(), note: `ניטרלי ${(p.NEUTRAL * 100).toFixed(0)}% / IVR ${(ctx.ivRank * 100).toFixed(0)}` });
+  out.push({ kind: 'SHORT_STRANGLE', bias: 1, score: 0.1 + p.NEUTRAL * 1.2 + ctx.ivRank * 0.7 - p.EXTREME * 2 + noise(), note: `קציר תנודתיות יקרה IVR ${(ctx.ivRank * 100).toFixed(0)}` });
+  out.push({ kind: 'CALENDAR', bias: 1, score: 0.45 + Math.max(-0.4, Math.min(0.45, ctx.termSpread * 4)) + p.NEUTRAL * 0.3 + noise(), note: `מבנה עיתי ${(ctx.termSpread * 100).toFixed(1)}v` });
   const dir: 1 | -1 = p.BULL >= p.BEAR ? 1 : -1;
   const dirP = Math.max(p.BULL, p.BEAR);
-  out.push({ kind: 'RISK_REVERSAL', bias: dir, score: dirP * 1.5 + Math.abs(ctx.momentum) * 0.08 - 0.05 + noise(), note: `${dir > 0 ? 'bull' : 'bear'} ${(dirP * 100).toFixed(0)}%` });
-  out.push({ kind: 'DIRECTIONAL', bias: dir, score: dirP * 1.4 + Math.abs(ctx.momentum) * 0.15 + noise(), note: `momentum z ${ctx.momentum.toFixed(1)}` });
-  out.push({ kind: 'LONG_STRADDLE', bias: 1, score: p.EXTREME * 2.4 + ctx.cascadeRisk * 0.8 + (1 - ctx.ivRank) * 0.35 + noise(), note: `liq cascade risk ${(ctx.cascadeRisk * 100).toFixed(0)}%` });
+  out.push({ kind: 'RISK_REVERSAL', bias: dir, score: dirP * 1.5 + Math.abs(ctx.momentum) * 0.08 - 0.05 + noise(), note: `${dir > 0 ? 'שורי' : 'דובי'} ${(dirP * 100).toFixed(0)}%` });
+  out.push({ kind: 'DIRECTIONAL', bias: dir, score: dirP * 1.4 + Math.abs(ctx.momentum) * 0.15 + noise(), note: `מומנטום z ${ctx.momentum.toFixed(1)}` });
+  out.push({ kind: 'LONG_STRADDLE', bias: 1, score: p.EXTREME * 2.4 + ctx.cascadeRisk * 0.8 + (1 - ctx.ivRank) * 0.35 + noise(), note: `סיכון מפל חיסולים ${(ctx.cascadeRisk * 100).toFixed(0)}%` });
   return out.sort((a, b) => b.score - a.score);
 }

@@ -15,7 +15,7 @@
   --color-accent: #2ee6b6;
   --color-cyan: #22d3ee;
   --color-violet: #a855f7;
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Heebo', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -36,6 +36,8 @@ body {
 }
 
 .num {
+  direction: ltr;
+  unicode-bidi: isolate;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }

@@ -70,7 +70,7 @@ export default function App() {
       </section>
 
       <footer className="num pb-1 text-center text-[9.5px] text-muted">
-        SIMULATION ONLY — synthetic market (regime-switching jump-diffusion + perp liquidation cascades), Black-Scholes surface, Binance/Deribit fee schedule, book-walk slippage & latency. Not financial advice.
+        סימולציה בלבד — שוק סינתטי (דיפוזיה עם קפיצות ומעברי משטר + מפלי חיסולים בפרפטואלים), משטח Black-Scholes, מבנה עמלות Binance/Deribit, החלקה והשהיה. אין לראות בכך ייעוץ השקעות.
       </footer>
     </div>
   );

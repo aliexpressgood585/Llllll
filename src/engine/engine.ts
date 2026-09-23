@@ -168,6 +168,8 @@ export interface DeskSnapshot {
   accountLiqs: AccountLiqEvent[];
 }
 
+const REGIME_HE: Record<Regime, string> = { BULL: 'שורי', NEUTRAL: 'ניטרלי', BEAR: 'דובי', EXTREME: 'קיצוני' };
+
 let uid = 0;
 const nextId = (p: string) => `${p}${(++uid).toString(36)}`;
 
@@ -226,7 +228,7 @@ export class DeskEngine {
     this.market.liqEvents = [];
     this.attemptStart = this.now;
     this.equity.push({ t: this.now, equity: START_CAPITAL, dd: 0 });
-    this.alert(`DESK ONLINE — capital ${fmtUsd(START_CAPITAL)} · aggression HIGH · max margin util ${(RISK.maxMarginUtil * 100).toFixed(0)}%`, 'LOW');
+    this.alert(`הדסק מחובר — הון ${fmtUsd(START_CAPITAL)} · אגרסיביות גבוהה · ניצול בטחונות מקסימלי ${(RISK.maxMarginUtil * 100).toFixed(0)}%`, 'LOW');
   }
 
   // ------------------------------------------------------------------ helpers
@@ -317,7 +319,7 @@ export class DeskEngine {
     else this.stats.losses++;
     const pct = st.riskCapital > 0 ? pnl / st.riskCapital : 0;
     const sev: Severity = pnl < -0.15 * this.equityNow() ? 'HIGH' : Math.abs(pct) > 0.4 ? 'MEDIUM' : 'LOW';
-    this.alert(`${reason}: ${st.label} ${pnl >= 0 ? '+' : ''}${fmtUsd(pnl, 0)} (${(pct * 100).toFixed(0)}% of risk)`, sev);
+    this.alert(`${reason}: ${st.label} ${pnl >= 0 ? '+' : ''}${fmtUsd(pnl, 0)} (${(pct * 100).toFixed(0)}% מהסיכון)`, sev);
   }
 
   closeStrategy(st: Strategy, reason: string, liquidation = false): boolean {
@@ -357,9 +359,9 @@ export class DeskEngine {
       const qty = +(ls.ratio * units * c.minQty).toFixed(6);
       const r = this.trade(st, ls, qty, 'OPEN');
       if (!r) {
-        this.alert(`LEG REJECT ${shortSymbol(ls)} — unwinding ${st.legs.length} filled leg(s) of ${plan.label}`, 'MEDIUM');
+        this.alert(`דחיית רגל ${shortSymbol(ls)} — מפרק ${st.legs.length} רגליים שמולאו ב-${plan.label}`, 'MEDIUM');
         this.strategies.push(st);
-        if (st.legs.length) this.closeStrategy(st, 'LEG-RISK UNWIND');
+        if (st.legs.length) this.closeStrategy(st, 'פירוק סיכון רגל');
         else this.strategies = this.strategies.filter((x) => x !== st);
         return;
       }
@@ -368,7 +370,7 @@ export class DeskEngine {
     st.dayPnlAnchor = 0;
     this.strategies.push(st);
     const credit = st.cashFlow > 0;
-    this.alert(`OPEN ${plan.label} ×${units} — ${credit ? 'credit' : 'debit'} ${fmtUsd(Math.abs(st.cashFlow), 0)} · risk ${fmtUsd(riskCapital, 0)} · ${plan.note}`, 'LOW');
+    this.alert(`פתיחה ${plan.label} ×${units} — ${credit ? 'קרדיט' : 'דביט'} ${fmtUsd(Math.abs(st.cashFlow), 0)} · סיכון ${fmtUsd(riskCapital, 0)} · ${plan.note}`, 'LOW');
   }
 
   private settleExpiries() {
@@ -385,10 +387,10 @@ export class DeskEngine {
         st.fees += fee;
         this.stats.fees += fee;
         this.recordFill(st, l, -l.qty, iv, iv, l.venue, fee, 0, 0, (iv - l.entryPrice) * l.qty - fee, 'EXPIRY');
-        if (l.qty < 0 && iv > 0) this.alert(`SHORT ${shortSymbol(l)} EXPIRED ITM — settled ${fmtUsd(iv * l.qty, 0)} @ ${fmtNum(S, ASSETS[l.asset].decimals)}`, 'MEDIUM');
+        if (l.qty < 0 && iv > 0) this.alert(`שורט ${shortSymbol(l)} פקע בתוך הכסף — סולק ${fmtUsd(iv * l.qty, 0)} @ ${fmtNum(S, ASSETS[l.asset].decimals)}`, 'MEDIUM');
       }
       st.legs = st.legs.filter((l) => l.expiry > this.now);
-      if (!st.legs.length) this.finalize(st, 'EXPIRY SETTLED');
+      if (!st.legs.length) this.finalize(st, 'סילוק בפקיעה');
     }
   }
 
@@ -397,7 +399,7 @@ export class DeskEngine {
     let equity = this.equityNow(s);
     if (mm > 0 && equity < mm * 1.25 && this.now - this.lastMarginAlert > MS.HOUR) {
       this.lastMarginAlert = this.now;
-      this.alert(`MARGIN CALL — equity ${fmtUsd(equity)} vs maintenance ${fmtUsd(mm)} (${((mm / Math.max(equity, 1)) * 100).toFixed(0)}% MR)`, 'HIGH');
+      this.alert(`מרג׳ין קול — הון ${fmtUsd(equity)} מול בטחונות שימור ${fmtUsd(mm)} (יחס ${((mm / Math.max(equity, 1)) * 100).toFixed(0)}%)`, 'HIGH');
     }
     if (mm <= 0 || equity >= mm) return;
     // forced liquidation: close biggest margin consumers until back above IM×MM buffer
@@ -407,15 +409,15 @@ export class DeskEngine {
       const before = this.equityNow(s);
       const feesBefore = target.fees;
       const pnlBefore = target.cashFlow + strategyValue(target, s, this.now);
-      this.closeStrategy(target, 'LIQUIDATED', true);
+      this.closeStrategy(target, 'חוסל', true);
       this.strategies = this.strategies.filter((x) => x !== target || x.legs.length);
       equity = this.equityNow(s);
       this.stats.liqCount++;
-      const ev: AccountLiqEvent = { time: this.now, strategy: target.label, lossUsd: pnlBefore + (equity - before), feeUsd: target.fees - feesBefore, equityAfter: equity, reason: `equity ${fmtUsd(before)} < MM ${fmtUsd(mm)}` };
+      const ev: AccountLiqEvent = { time: this.now, strategy: target.label, lossUsd: pnlBefore + (equity - before), feeUsd: target.fees - feesBefore, equityAfter: equity, reason: `הון ${fmtUsd(before)} < MM ${fmtUsd(mm)}` };
       this.accountLiqs.unshift(ev);
       if (this.accountLiqs.length > 30) this.accountLiqs.length = 30;
       this.liqMarks.push({ t: this.now, equity });
-      this.alert(`⚠ FORCED LIQUIDATION ${target.label} — P&L ${fmtUsd(ev.lossUsd)} · liq fee ${fmtUsd(ev.feeUsd, 2)} · equity ${fmtUsd(equity)}`, 'CRITICAL');
+      this.alert(`⚠ חיסול כפוי ${target.label} — רו״ה ${fmtUsd(ev.lossUsd)} · עמלת חיסול ${fmtUsd(ev.feeUsd, 2)} · הון ${fmtUsd(equity)}`, 'CRITICAL');
       ({ im, mm } = this.refreshMargins(s));
     }
     void im;
@@ -424,19 +426,19 @@ export class DeskEngine {
   private checkBlowup(s: Surfaces) {
     const eq = this.equityNow(s);
     if (eq > START_CAPITAL * RISK.blowupThreshold) return;
-    for (const st of [...this.strategies]) this.closeStrategy(st, 'BLOWUP LIQ', true);
+    for (const st of [...this.strategies]) this.closeStrategy(st, 'חיסול מחיקה', true);
     this.strategies = [];
     const after = this.equityNow(s);
     if (after < 0) {
-      this.alert(`NEGATIVE BALANCE ${fmtUsd(after)} absorbed by insurance fund`, 'CRITICAL');
+      this.alert(`יתרה שלילית ${fmtUsd(after)} נספגה בקרן הביטוח`, 'CRITICAL');
       this.cash -= after;
     }
     this.blowups++;
     this.liqMarks.push({ t: this.now, equity: Math.max(0, after) });
-    this.attemptsLog.unshift({ attempt: this.attempt, peak: this.peak, hours: (this.now - this.attemptStart) / MS.HOUR, cause: this.accountLiqs[0]?.strategy ?? 'drawdown' });
+    this.attemptsLog.unshift({ attempt: this.attempt, peak: this.peak, hours: (this.now - this.attemptStart) / MS.HOUR, cause: this.accountLiqs[0]?.strategy ?? 'ירידה' });
     if (this.attemptsLog.length > 8) this.attemptsLog.length = 8;
     this.blowupCountdown = RISK.resetAfterSteps;
-    this.alert(`ACCOUNT #${this.attempt} WIPED OUT — peak ${fmtUsd(this.peak)} → ${fmtUsd(Math.max(0, after))}. Re-seeding ${fmtUsd(START_CAPITAL)}.`, 'CRITICAL');
+    this.alert(`חשבון #${this.attempt} נמחק — שיא ${fmtUsd(this.peak)} ← ${fmtUsd(Math.max(0, after))}. הפקדה מחדש של ${fmtUsd(START_CAPITAL)}.`, 'CRITICAL');
   }
 
   private resetAccount() {
@@ -456,7 +458,7 @@ export class DeskEngine {
     this.attemptStart = this.now;
     this.stats = { trades: 0, wins: 0, losses: 0, realized: 0, fees: 0, liqCount: 0 };
     this.kindStats = {};
-    this.alert(`ACCOUNT #${this.attempt} FUNDED ${fmtUsd(START_CAPITAL)} — strategies re-armed`, 'MEDIUM');
+    this.alert(`חשבון #${this.attempt} מומן ב-${fmtUsd(START_CAPITAL)} — האסטרטגיות נדרכו מחדש`, 'MEDIUM');
   }
 
   private signalContext(a: Asset) {
@@ -493,19 +495,19 @@ export class DeskEngine {
       const probs = this.regimeEngine.probs[st.asset];
       const ageH = (this.now - st.openedAt) / MS.HOUR;
       let reason: string | null = null;
-      if (pnl >= rule.tp * st.riskCapital) reason = 'TAKE PROFIT';
-      else if (pnl <= -rule.sl * st.riskCapital) reason = 'STOP LOSS';
-      else if (ageH > rule.maxHoldHours) reason = 'TIME EXIT';
-      else if ((st.kind === 'IRON_CONDOR' || st.kind === 'SHORT_STRANGLE') && probs.EXTREME > 0.42) reason = 'VOL REGIME EXIT';
-      else if (st.kind === 'LONG_STRADDLE' && ageH > 3 && probs.EXTREME < 0.08 && probs.NEUTRAL > 0.6) reason = 'REGIME DECAY EXIT';
+      if (pnl >= rule.tp * st.riskCapital) reason = 'מימוש רווח';
+      else if (pnl <= -rule.sl * st.riskCapital) reason = 'סטופ לוס';
+      else if (ageH > rule.maxHoldHours) reason = 'יציאה בזמן';
+      else if ((st.kind === 'IRON_CONDOR' || st.kind === 'SHORT_STRANGLE') && probs.EXTREME > 0.42) reason = 'יציאה - משטר תנודתיות';
+      else if (st.kind === 'LONG_STRADDLE' && ageH > 3 && probs.EXTREME < 0.08 && probs.NEUTRAL > 0.6) reason = 'יציאה - דעיכת משטר';
       else if ((st.kind === 'DIRECTIONAL' || st.kind === 'RISK_REVERSAL') && ageH > 1) {
         const long = st.legs.some((l) => (l.type === 'C' && l.qty > 0) || (l.type === 'P' && l.qty < 0));
-        if ((long && probs.BEAR > 0.55) || (!long && probs.BULL > 0.55)) reason = 'REGIME FLIP';
+        if ((long && probs.BEAR > 0.55) || (!long && probs.BULL > 0.55)) reason = 'היפוך משטר';
       }
       if (!reason) {
         const next = Math.min(...st.legs.map((l) => l.expiry));
         const shortItm = st.legs.some((l) => l.qty < 0 && l.expiry === next && intrinsic(s[l.asset].spot, l.strike, l.type) > 0);
-        if (next - this.now < 25 * 60e3 && shortItm) reason = 'PIN-RISK EXIT';
+        if (next - this.now < 25 * 60e3 && shortItm) reason = 'יציאה - סיכון פינינג';
       }
       if (reason) this.closeStrategy(st, reason);
     }
@@ -560,7 +562,7 @@ export class DeskEngine {
     if (units < 1) {
       if (this.now - this.lastPreTradeAlert > 2 * MS.HOUR) {
         this.lastPreTradeAlert = this.now;
-        this.alert(`PRE-TRADE BLOCK ${plan.label}: insufficient free margin (${fmtUsd(unitRisk, 0)}/unit)`, 'LOW');
+        this.alert(`חסימה לפני מסחר ${plan.label}: אין מספיק בטחונות פנויים (${fmtUsd(unitRisk, 0)} ליחידה)`, 'LOW');
       }
       return;
     }
@@ -577,7 +579,7 @@ export class DeskEngine {
       const depth = ASSETS[ev.asset].liqDepthPer1Pct;
       if (ev.notional > depth * 0.25) {
         const sev: Severity = ev.notional > depth * 1.2 ? 'HIGH' : 'MEDIUM';
-        this.alert(`LIQ CASCADE ${ev.asset} ${ev.side}S ${fmtCompactUsd(ev.notional)} @ ${fmtNum(ev.price, ASSETS[ev.asset].decimals)} (${ev.impactPct >= 0 ? '+' : ''}${(ev.impactPct * 100).toFixed(2)}%)`, sev);
+        this.alert(`מפל חיסולים ${ev.asset} ${ev.side === 'LONG' ? 'לונגים' : 'שורטים'} ${fmtCompactUsd(ev.notional)} @ ${fmtNum(ev.price, ASSETS[ev.asset].decimals)} (${ev.impactPct >= 0 ? '+' : ''}${(ev.impactPct * 100).toFixed(2)}%)`, sev);
       }
     }
     if (Math.floor(this.now / MS.HOUR) !== Math.floor(prev / MS.HOUR)) {
@@ -602,7 +604,7 @@ export class DeskEngine {
       if (call !== this.lastCall[a] && pr[call] > 0.38 && pr[call] - pr[this.lastCall[a]] > 0.08) {
         this.lastCall[a] = call;
         const p = this.regimeEngine.probs[a][call];
-        this.alert(`REGIME SHIFT ${a} → ${call} (${(p * 100).toFixed(0)}%)`, call === 'EXTREME' ? 'HIGH' : 'MEDIUM');
+        this.alert(`שינוי משטר ${a} ← ${REGIME_HE[call]} (${(p * 100).toFixed(0)}%)`, call === 'EXTREME' ? 'HIGH' : 'MEDIUM');
       }
     }
 
@@ -631,7 +633,7 @@ export class DeskEngine {
     this.dayHighEquity = Math.max(this.dayHighEquity, eq);
     if (this.now >= this.circuitUntil && (this.dayHighEquity - eq) / this.dayHighEquity > RISK.circuitDd) {
       this.circuitUntil = this.now + RISK.circuitHours * MS.HOUR;
-      this.alert(`CIRCUIT BREAKER TRIPPED — intraday DD ${(((this.dayHighEquity - eq) / this.dayHighEquity) * 100).toFixed(0)}%, new risk halted ${RISK.circuitHours}h`, 'HIGH');
+      this.alert(`מפסק זרם הופעל — ירידה תוך-יומית ${(((this.dayHighEquity - eq) / this.dayHighEquity) * 100).toFixed(0)}%, סיכון חדש נעצר ל-${RISK.circuitHours} שעות`, 'HIGH');
       this.dayHighEquity = eq;
     }
   }

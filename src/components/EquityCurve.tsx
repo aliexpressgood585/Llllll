@@ -31,8 +31,8 @@ export function EquityCurve({ s }: { s: DeskSnapshot }) {
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => t0 + span * f);
   return (
     <Panel
-      title="Real-Time Equity Curve & Drawdown"
-      right={<span className="num text-[10px] text-muted">acct #{s.attempt} · peak {fmtCompactUsd(s.account.peak)}</span>}
+      title="עקומת הון וירידות בזמן אמת"
+      right={<span className="num text-[10px] text-muted">חשבון #{s.attempt} · שיא {fmtCompactUsd(s.account.peak)}</span>}
     >
       <div ref={ref} className="w-full">
         <svg width={W} height={H1 + H2 + 22} className="block">
@@ -58,11 +58,11 @@ export function EquityCurve({ s }: { s: DeskSnapshot }) {
             <g key={i}>
               <line x1={X(m.t)} x2={X(m.t)} y1={0} y2={H1} stroke="#ff4d5e" strokeOpacity={0.35} />
               <circle cx={X(m.t)} cy={Y(m.equity)} r={3.5} fill="#ff4d5e" stroke="#fff" strokeWidth={0.8}>
-                <title>Forced liquidation</title>
+                <title>חיסול כפוי</title>
               </circle>
             </g>
           ))}
-          <text x={padL + 2} y={H1 + 10} fontSize="9" fill="#5f6f82" fontFamily="Inter, system-ui, sans-serif">DRAWDOWN</text>
+          <text x={padL + 2} y={H1 + 10} fontSize="9" fill="#5f6f82" fontFamily="Inter, system-ui, sans-serif">ירידה מהשיא</text>
           {[0, 0.5, 1].map((f) => (
             <text key={f} x={2} y={YD(minDD * f) + 3} fontSize="9" fill="#5f6f82" fontFamily="JetBrains Mono, ui-monospace, monospace">{(minDD * f * 100).toFixed(0)}%</text>
           ))}

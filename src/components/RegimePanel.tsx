@@ -4,20 +4,20 @@ import type { Regime } from '../engine/types';
 import { Panel } from './ui';
 
 const COLS: { key: Regime; label: string; rgb: string }[] = [
-  { key: 'BULL', label: 'Bullish', rgb: '31,214,154' },
-  { key: 'NEUTRAL', label: 'Neutral', rgb: '120,140,160' },
-  { key: 'BEAR', label: 'Bearish', rgb: '255,77,94' },
-  { key: 'EXTREME', label: 'Extreme', rgb: '255,40,60' },
+  { key: 'BULL', label: 'שורי', rgb: '31,214,154' },
+  { key: 'NEUTRAL', label: 'ניטרלי', rgb: '120,140,160' },
+  { key: 'BEAR', label: 'דובי', rgb: '255,77,94' },
+  { key: 'EXTREME', label: 'קיצוני', rgb: '255,40,60' },
 ];
 
 export function RegimePanel({ s }: { s: DeskSnapshot }) {
   return (
-    <Panel title="Multi-Asset Regime Engine" right={<span className="num text-[10px] text-muted">conf {(s.regime.confidence * 100).toFixed(0)}%</span>}>
-      <div className="mb-1.5 text-[10px] text-dim">Regime probability heatmap · momentum / vol / liq-flow / funding</div>
+    <Panel title="מנוע משטרי שוק רב-נכסי" right={<span className="num text-[10px] text-muted">ביטחון {(s.regime.confidence * 100).toFixed(0)}%</span>}>
+      <div className="mb-1.5 text-[10px] text-dim">מפת חום הסתברויות משטר · מומנטום / תנודתיות / זרם חיסולים / מימון</div>
       <table className="w-full border-separate border-spacing-[2px] text-[11px]">
         <thead>
           <tr className="text-[9.5px] uppercase tracking-wider text-muted">
-            <th className="text-left font-semibold">Asset</th>
+            <th className="text-start font-semibold">נכס</th>
             {COLS.map((c) => (
               <th key={c.key} className="font-semibold">{c.label}</th>
             ))}

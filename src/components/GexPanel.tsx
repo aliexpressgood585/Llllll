@@ -14,15 +14,15 @@ export function GexPanel({ s }: { s: DeskSnapshot }) {
   const prof = g.profile.filter((p) => Math.abs(p.strike / spot - 1) < 0.12);
   const maxAbs = Math.max(...prof.map((p) => Math.abs(p.gex)), 1);
   return (
-    <Panel title="Dealer Gamma Exposure (GEX)" right={ASSET_LIST.map((a) => <Chip key={a} active={a === asset} onClick={() => setAsset(a)}>{a}</Chip>)}>
-      <Row label={`Total GEX (${asset})`} value={`${fmtNum(g.totalAsset, 0)} ${asset}`} tone={neg ? 'text-down' : 'text-up'} />
-      <div className={`text-[10px] font-semibold uppercase tracking-wide ${neg ? 'text-down' : 'text-up'}`}>
-        GEX regime {neg ? 'negative (short-gamma dealers → amplifying)' : 'positive (long-gamma dealers → dampening)'}
+    <Panel title="חשיפת גמא של דילרים (GEX)" right={ASSET_LIST.map((a) => <Chip key={a} active={a === asset} onClick={() => setAsset(a)}>{a}</Chip>)}>
+      <Row label={`GEX כולל (${asset})`} value={`${fmtNum(g.totalAsset, 0)} ${asset}`} tone={neg ? 'text-down' : 'text-up'} />
+      <div className={`text-[10px] font-semibold tracking-wide ${neg ? 'text-down' : 'text-up'}`}>
+        משטר GEX {neg ? 'שלילי (דילרים בשורט גמא ← מגביר תנודות)' : 'חיובי (דילרים בלונג גמא ← מרסן תנודות)'}
       </div>
-      <Row label="$ GEX / 1% move" value={fmtCompactUsd(g.totalUsd, true)} tone={neg ? 'text-down' : 'text-up'} />
-      <Row label="Pinning strikes (front)" value={g.pinning.map((p) => fmtNum(p, 0)).join(' | ')} />
-      <Row label="Highest |GEX| strike" value={fmtNum(g.highestStrike, dp)} />
-      <Row label="Gamma flip" value={g.flip ? fmtNum(g.flip, dp) : 'none ±8%'} tone="text-warn" />
+      <Row label="$ GEX לתנועה של 1%" value={fmtCompactUsd(g.totalUsd, true)} tone={neg ? 'text-down' : 'text-up'} />
+      <Row label="סטרייקים מושכים (קרוב)" value={g.pinning.map((p) => fmtNum(p, 0)).join(' | ')} />
+      <Row label="סטרייק |GEX| מקסימלי" value={fmtNum(g.highestStrike, dp)} />
+      <Row label="נקודת היפוך גמא" value={g.flip ? fmtNum(g.flip, dp) : 'אין ב-±8%'} tone="text-warn" />
       <div className="mt-2 flex h-[52px] items-center gap-[1px]">
         {prof.map((p) => {
           const h = (Math.abs(p.gex) / maxAbs) * 24;
@@ -38,7 +38,7 @@ export function GexPanel({ s }: { s: DeskSnapshot }) {
       </div>
       <div className="num flex justify-between text-[9px] text-muted">
         <span>{fmtNum(prof[0]?.strike ?? 0, 0)}</span>
-        <span className="text-cyan">spot {fmtNum(spot, dp)}</span>
+        <span className="text-cyan">ספוט {fmtNum(spot, dp)}</span>
         <span>{fmtNum(prof[prof.length - 1]?.strike ?? 0, 0)}</span>
       </div>
     </Panel>
