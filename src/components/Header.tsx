@@ -1,0 +1,81 @@
+import type { DeskControls } from '../hooks/useDesk';
+import type { DeskSnapshot } from '../engine/engine';
+import { SPEEDS } from '../engine/config';
+import { fmtNum, fmtPct, fmtSignedUsd, fmtTime, fmtUsd } from '../lib/format';
+import { Dot } from './ui';
+
+function Stat({ label, value, sub, tone = 'text-text', subTone }: { label: string; value: string; sub?: string; tone?: string; subTone?: string }) {
+  return (
+    <div className="flex min-w-[92px] flex-col justify-center border-l border-line px-3">
+      <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">{label}</span>
+      <span className={`num text-[17px] font-semibold leading-tight ${tone}`}>{value}</span>
+      {sub && <span className={`num text-[10.5px] ${subTone ?? tone}`}>{sub}</span>}
+    </div>
+  );
+}
+
+export function Header({ s, c }: { s: DeskSnapshot; c: DeskControls }) {
+  const a = s.account;
+  const tone = (v: number) => (v >= 0 ? 'text-up' : 'text-down');
+  return (
+    <header className="flex flex-wrap items-stretch justify-between gap-y-2 rounded-[3px] border border-line bg-panel px-3 py-2">
+      <div className="flex items-center gap-3">
+        <svg viewBox="0 0 32 32" className="h-8 w-8 text-accent">
+          <rect x="3" y="3" width="26" height="26" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path d="M8 8l16 16M24 8L8 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[17px] font-bold uppercase tracking-[0.12em] text-white">Nexus Quant Options Desk</h1>
+            <span className="flex items-center gap-1 rounded-sm border border-up/30 bg-up/10 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-up">
+              <Dot pulse /> Live Sim
+            </span>
+          </div>
+          <div className="num text-[10px] text-muted">
+            ACCT #{s.attempt} · START {fmtUsd(a.start)} · AGGRESSION <span className="text-down">HIGH</span> · BLOWUPS <span className={s.blowups ? 'text-down' : 'text-dim'}>{s.blowups}</span> · LIQS <span className={a.liqCount ? 'text-down' : 'text-dim'}>{a.liqCount}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-stretch gap-y-2">
+        <div className="flex flex-col justify-center gap-0.5 border-l border-line px-3 text-[10px] font-semibold uppercase tracking-wider">
+          <span className="text-muted">Binance Options</span>
+          <span className="flex items-center gap-1 text-up"><Dot /> Connected</span>
+        </div>
+        <div className="flex flex-col justify-center gap-0.5 border-l border-line px-3 text-[10px] font-semibold uppercase tracking-wider">
+          <span className="text-muted">Deribit</span>
+          <span className="flex items-center gap-1 text-up"><Dot /> Connected</span>
+        </div>
+        <Stat label="Account Equity" value={fmtUsd(a.equity, 2)} sub={`cash ${fmtUsd(a.cash)}`} tone="text-white" subTone="text-muted" />
+        <Stat label="Daily P&L" value={fmtPct(a.dayPnlPct, 2, true)} sub={fmtSignedUsd(a.dayPnl)} tone={tone(a.dayPnl)} />
+        <Stat label="Since Inception" value={fmtPct(a.totalReturn, 1, true)} sub={fmtSignedUsd(a.totalPnl)} tone={tone(a.totalPnl)} />
+        <Stat label="Sharpe" value={a.sharpe === null ? '—' : fmtNum(a.sharpe, 2)} sub={`W/L ${a.wins}/${a.losses}`} tone="text-white" subTone="text-muted" />
+        <Stat label="Max DD" value={fmtPct(a.maxDD, 1)} sub={fmtSignedUsd(a.maxDDUsd)} tone="text-down" />
+      </div>
+
+      <div className="flex items-center gap-2 border-l border-line pl-3">
+        <div className="flex overflow-hidden rounded-[3px] border border-line2">
+          {SPEEDS.map((sp) => (
+            <button key={sp} onClick={() => c.setSpeed(sp)} className={`num px-2 py-1 text-[10px] font-semibold ${c.speed === sp ? 'bg-accent/20 text-accent' : 'text-muted hover:text-dim'}`}>
+              {sp}x
+            </button>
+          ))}
+        </div>
+        <button onClick={c.toggle} title={c.running ? 'Pause' : 'Resume'} className="grid h-7 w-7 place-items-center rounded-[3px] border border-line2 text-dim hover:text-white">
+          {c.running ? (
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor"><rect x="3" y="2" width="3.5" height="12" /><rect x="9.5" y="2" width="3.5" height="12" /></svg>
+          ) : (
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor"><path d="M4 2l10 6-10 6z" /></svg>
+          )}
+        </button>
+        <button onClick={c.reset} title="New simulation" className="grid h-7 w-7 place-items-center rounded-[3px] border border-line2 text-dim hover:text-white">
+          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2v3h-3" /></svg>
+        </button>
+        <div className="ml-1 text-right">
+          <div className="num text-[15px] font-semibold text-white">{fmtTime(s.now)} UTC</div>
+          <div className="num text-[9.5px] text-muted">{new Date(s.now).toISOString().slice(0, 10)} · SIM</div>
+        </div>
+      </div>
+    </header>
+  );
+}
