@@ -16,12 +16,15 @@ import { RiskDashboard } from './components/RiskDashboard';
 import { ScenarioPanel } from './components/ScenarioPanel';
 import { TradeBlotter } from './components/TradeBlotter';
 import { VolRegimePanel } from './components/VolRegimePanel';
+import { LiveMarket } from './components/LiveMarket';
 import { useDesk } from './hooks/useDesk';
 
 export default function App() {
   const [s, controls] = useDesk();
   return (
     <div className="mx-auto flex min-h-screen max-w-[2200px] flex-col gap-2 p-2">
+      <LiveMarket />
+      <div className="rounded-lg border border-warn/30 bg-warn/5 p-3 text-sm text-warn">מעבדת סימולציה נפרדת · כל הנתונים למטה סינתטיים, כולל רווחים, חיסולים ושרשרת אופציות. זו אינה בדיקה היסטורית על Binance.</div>
       <BlowupBanner s={s} />
       <Header s={s} c={controls} />
 
@@ -75,3 +78,4 @@ export default function App() {
     </div>
   );
 }
+

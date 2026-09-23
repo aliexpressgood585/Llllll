@@ -1,52 +1,31 @@
-# Nexus Quant Options Desk — high-aggression crypto options desk (simulation)
+# Nexus Quant Options Desk
 
-React + TypeScript + Tailwind v4 + Vite. Fully client-side, deterministic-per-seed simulation. **Not connected to real money.**
+Hebrew React + TypeScript dashboard with two explicitly separate surfaces:
 
-## Run
+- **Binance public market monitor:** discovers listed options through exchangeInfo, refreshes index and depth every 10 seconds, validates lot sizes, rejects stale/expired/illiquid estimates, and estimates a marketable limit buy by walking ask levels. Fees are editable assumptions, not verified account rates. Read-only; no account connection or order submission. Quantity follows API depth base-asset units.
+- **Synthetic laboratory:** the existing generated market, IV, liquidation clusters and strategy engine. This is NOT a Binance historical backtest or a live trading engine. Starts paused. Venue badges say model only. Synthetic margin and fees remain approximations.
 
-```bash
+## Run and verify
+
+```sh
 npm ci
-npm run dev          # http://localhost:5173
-npm run build        # typecheck + production build -> dist/
-npm run preview      # serve dist/ on http://localhost:4173
-npm run sim:soak -- 12 42   # headless: 12 sim-days, seed 42 (engine calibration)
+npm run build
+node --import tsx --test scripts/realism.test.ts
+npm run dev
 ```
 
-## Deploy (Vercel)
+## Realism corrections
 
-```bash
-npm i -g vercel
-vercel login
-vercel link          # first time only
-vercel --prod        # uses vercel.json: npm ci -> npm run build -> dist/
-```
+Closing executions use the position venue's quote. Routing includes modeled fees; tick rounding is adverse. Invalid quantities and expired requests are rejected. Circuit breaker is evaluated before new entries. Per-trade budget is 10%, margin utilization limit 60%, intraday drawdown trigger 5% with a three-hour entry pause. These settings do not guarantee a loss cap. Warm-up ends at the requested start time. Wiped accounts stop, preserve negative balances, and never automatically refill. Reset is explicit. Speed labels show actual simulated/wall-clock ratio (240x at the lowest setting).
 
-Or import the Git repo in the Vercel dashboard (framework preset: Vite, no env vars required).
-Optional: `VITE_DATA_SOURCE=binance-public` anchors simulated prices to live Binance index prices (read-only, no keys).
+The optional legacy index anchor is no longer wired to the simulation: blending a live index into a random market is not live trading. Failures in the public monitor are visible and never replaced with synthetic quotes.
 
-## Structure
+## Deployment
 
-```
-src/
-  engine/            pure TS simulation (no React)
-    config.ts        capital ($2,500), aggression knobs, fee schedule, regime params
-    market.ts        regime-switching jump diffusion, perp leverage clusters + liquidation cascades, IV surface, quotes
-    execution.ts     smart router Binance/Deribit: book-walk slippage, latency drift, rejects, liquidation crossing
-    fees.ts          Binance/Deribit taker/maker, premium caps, exercise & liquidation fees
-    valuation.ts     Black-Scholes revaluation, risk-based IM/MM, Monte-Carlo VaR/ES
-    regime.ts        observable-feature regime classifier (bull/neutral/bear/extreme)
-    strategies.ts    IC, short strangle, calendar, risk reversal, directional, long straddle
-    engine.ts        orchestration: entries/exits, expiry settlement, forced liquidation, blowup & re-fund, snapshot
-  adapters/          live-API contracts (MarketDataFeed, LiveExecutionVenue) + Binance public feed
-  hooks/             useDesk (engine clock), useElementSize
-  components/        dashboard panels
-scripts/headless.ts  soak test / calibration
-```
+Vercel Vite preset, `npm ci`, `npm run build`, output `dist`. Deploy the `claude/crypto-options-trading-desk-m8mnmf` branch; repository default branch contains a separate rooms project. Public Binance access can be unavailable due to regional restrictions or browser CORS. In that case the monitor explicitly shows unavailable and blocks estimates.
 
-## Model notes
+## Limits
 
-- Account starts at $2,500; positions sized at up to 45% of equity per trade and up to 98% margin use.
-- Maintenance margin = 85% of risk-based IM → forced liquidation closes the largest margin users with a 0.35% clearance fee plus aggressive crossing.
-  Equity below 10% of start = wipe-out; the desk re-funds $2,500 after a cooldown and logs the dead account.
-- Market-wide liquidation clusters (10–100x leverage) sit around spot; crossing them triggers forced flow that moves price and can cascade.
-- Fees: 0.03% of index notional, capped at 10% (Binance) / 12.5% (Deribit) of premium; exercise fee 0.015%.
+No actual trades, historical validation, real account P&L, verified account commission, settlement or liquidation replication. Order-book snapshots cannot guarantee fills or model future latency. Strategy risk, Greeks, GEX and all simulation P&L remain synthetic. Automated deployment requires an authorized Vercel account.
+
+API reference: https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data
