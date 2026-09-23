@@ -37,23 +37,23 @@ export class SimExecution implements ExecutionVenue {
   execute(req: ExecRequest, now: number): ExecResult {
     const c = ASSETS[req.asset];
     const q = this.market.quote(req, now);
+    if (!Number.isFinite(req.qty) || req.qty === 0 || req.expiry <= now ||
+        Math.abs(req.qty / c.minQty - Math.round(req.qty / c.minQty)) > 1e-7) {
+      return { ok: false, reason: 'INVALID_ORDER', price: 0, touch: 0, venue: req.preferVenue ?? 'BINANCE', fee: 0, slippageBp: 0, latencyMs: 0 };
+    }
     const buy = req.qty > 0;
     const size = Math.abs(req.qty);
     const stressed = this.market.regime === 'EXTREME';
 
-    // route: pick best touch among venues listing the asset
-    let venue: Venue = 'BINANCE';
-    let touch = buy ? q.ask : q.bid;
-    for (const v of c.venues) {
-      if (v === 'BINANCE') continue;
-      const off = 1 + 0.006 * (hash01(`${q.symbol}${v}${Math.floor(now / 120e3)}`) - 0.5);
-      const t = buy ? q.ask * off : q.bid * off;
-      if ((buy && t < touch) || (!buy && t > touch)) {
-        touch = t;
-        venue = v;
-      }
-    }
-    if (req.preferVenue && c.venues.includes(req.preferVenue)) venue = req.preferVenue;
+    // A closing leg must use its original venue and that venue's own quote.
+    const venues = req.preferVenue ? c.venues.filter(v => v === req.preferVenue) : c.venues;
+    if (!venues.length) return { ok: false, reason: 'UNSUPPORTED_VENUE', price: 0, touch: 0, venue: req.preferVenue ?? 'BINANCE', fee: 0, slippageBp: 0, latencyMs: 0 };
+    const touches = venues.map(venue => {
+      const offset = venue === 'BINANCE' ? 1 : 1 + 0.006 * (hash01(`${q.symbol}${venue}${Math.floor(now / 120e3)}`) - 0.5);
+      const touch = (buy ? q.ask : q.bid) * offset;
+      return { venue, touch, cost: (buy ? touch : -touch) + tradeFee(venue, this.market.assets[req.asset].spot, 1, touch) };
+    }).sort((a, b) => a.cost - b.cost);
+    const { venue, touch } = touches[0];
 
     const latencyMs = Math.min(900, this.rng.lognormal(Math.log(stressed ? 42 : 16), stressed ? 0.7 : 0.35));
 
@@ -74,7 +74,7 @@ export class SimExecution implements ExecutionVenue {
       // liquidation engine crosses aggressively: extra 4% of premium + 2 ticks
       px = buy ? px * 1.04 + 2 * c.tick : px * 0.96 - 2 * c.tick;
     }
-    px = Math.max(c.tick, Math.round(px / c.tick) * c.tick);
+    px = Math.max(c.tick, (buy ? Math.ceil(px / c.tick) : Math.floor(px / c.tick)) * c.tick);
     const touchRef = Math.max(c.tick, touch);
     const slippageBp = ((buy ? px - touchRef : touchRef - px) / touchRef) * 1e4;
     let fee = tradeFee(venue, this.market.assets[req.asset].spot, size, px);
@@ -82,3 +82,4 @@ export class SimExecution implements ExecutionVenue {
     return { ok: true, price: px, touch: touchRef, venue, fee, slippageBp, latencyMs };
   }
 }
+

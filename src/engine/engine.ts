@@ -212,10 +212,10 @@ export class DeskEngine {
   private lastMarginAlert = 0;
   private lastPreTradeAlert = 0;
 
-  constructor(seed = Date.now() & 0xffffffff) {
+  constructor(seed = Date.now() & 0xffffffff, startTime = Date.now()) {
     this.rng = new Rng(seed);
     this.riskRng = new Rng(seed ^ 0x9e3779b9);
-    this.now = Math.floor(Date.now() / 60e3) * 60e3;
+    this.now = Math.floor(startTime / 60e3) * 60e3 - 6 * 60 * 60e3;
     this.attemptStart = this.now;
     this.market = new MarketSim(this.rng, this.now);
     this.exec = new SimExecution(this.market, this.rng);
@@ -228,7 +228,7 @@ export class DeskEngine {
     this.market.liqEvents = [];
     this.attemptStart = this.now;
     this.equity.push({ t: this.now, equity: START_CAPITAL, dd: 0 });
-    this.alert(`הדסק מחובר — הון ${fmtUsd(START_CAPITAL)} · אגרסיביות גבוהה · ניצול בטחונות מקסימלי ${(RISK.maxMarginUtil * 100).toFixed(0)}%`, 'LOW');
+    this.alert(`סימולציה סינתטית — הון ${fmtUsd(START_CAPITAL)} · סיכון מוגבל · ניצול בטחונות מקסימלי ${(RISK.maxMarginUtil * 100).toFixed(0)}%`, 'LOW');
   }
 
   // ------------------------------------------------------------------ helpers
@@ -429,36 +429,12 @@ export class DeskEngine {
     for (const st of [...this.strategies]) this.closeStrategy(st, 'חיסול מחיקה', true);
     this.strategies = [];
     const after = this.equityNow(s);
-    if (after < 0) {
-      this.alert(`יתרה שלילית ${fmtUsd(after)} נספגה בקרן הביטוח`, 'CRITICAL');
-      this.cash -= after;
-    }
     this.blowups++;
     this.liqMarks.push({ t: this.now, equity: Math.max(0, after) });
     this.attemptsLog.unshift({ attempt: this.attempt, peak: this.peak, hours: (this.now - this.attemptStart) / MS.HOUR, cause: this.accountLiqs[0]?.strategy ?? 'ירידה' });
     if (this.attemptsLog.length > 8) this.attemptsLog.length = 8;
-    this.blowupCountdown = RISK.resetAfterSteps;
-    this.alert(`חשבון #${this.attempt} נמחק — שיא ${fmtUsd(this.peak)} ← ${fmtUsd(Math.max(0, after))}. הפקדה מחדש של ${fmtUsd(START_CAPITAL)}.`, 'CRITICAL');
-  }
-
-  private resetAccount() {
-    this.attempt++;
-    this.cash = START_CAPITAL;
-    this.strategies = [];
-    this.peak = START_CAPITAL;
-    this.maxDD = 0;
-    this.maxDDUsd = 0;
-    this.dayStartEquity = START_CAPITAL;
-    this.dayHighEquity = START_CAPITAL;
-    this.hourlyRets = [];
-    this.lastHourEquity = START_CAPITAL;
-    this.circuitUntil = 0;
-    this.equity = [{ t: this.now, equity: START_CAPITAL, dd: 0 }];
-    this.liqMarks = [];
-    this.attemptStart = this.now;
-    this.stats = { trades: 0, wins: 0, losses: 0, realized: 0, fees: 0, liqCount: 0 };
-    this.kindStats = {};
-    this.alert(`חשבון #${this.attempt} מומן ב-${fmtUsd(START_CAPITAL)} — האסטרטגיות נדרכו מחדש`, 'MEDIUM');
+    this.blowupCountdown = 1;
+    this.alert(`חשבון #${this.attempt} נמחק — שיא ${fmtUsd(this.peak)} ← ${fmtUsd(Math.max(0, after))}. הסימולציה נעצרה; איפוס ידני בלבד.`, 'CRITICAL');
   }
 
   private signalContext(a: Asset) {
@@ -612,8 +588,7 @@ export class DeskEngine {
     const s = this.surfaces();
 
     if (this.blowupCountdown > 0) {
-      this.blowupCountdown--;
-      if (this.blowupCountdown === 0) this.resetAccount();
+      // Preserve the failed account and its loss until an explicit user reset.
       this.recordEquity(s);
       return;
     }
@@ -624,10 +599,6 @@ export class DeskEngine {
       this.recordEquity(s);
       return;
     }
-    this.manageExits(s);
-    this.refreshMargins(s);
-    this.maybeEnter(s);
-    this.recordEquity(s);
 
     const eq = this.equityNow(s);
     this.dayHighEquity = Math.max(this.dayHighEquity, eq);
@@ -636,6 +607,10 @@ export class DeskEngine {
       this.alert(`מפסק זרם הופעל — ירידה תוך-יומית ${(((this.dayHighEquity - eq) / this.dayHighEquity) * 100).toFixed(0)}%, סיכון חדש נעצר ל-${RISK.circuitHours} שעות`, 'HIGH');
       this.dayHighEquity = eq;
     }
+    this.manageExits(s);
+    this.refreshMargins(s);
+    this.maybeEnter(s);
+    this.recordEquity(s);
   }
 
   private recordEquity(s: Surfaces) {
@@ -913,3 +888,4 @@ export class DeskEngine {
 }
 
 export { STRATEGY_NAMES };
+
