@@ -1,13 +1,14 @@
 import { bsGreeks } from '../lib/blackScholes';
 import { Rng } from '../lib/rng';
 import { ASSETS, ASSET_LIST, RISK, RISK_FREE } from './config';
-import { MarketSim, SurfaceState, surfaceIv, theoPrice } from './market';
+import { SurfaceState, surfaceIv, theoPrice } from './market';
+import type { MarketSource } from './marketSource';
 import { MS, yearsTo } from './time';
 import type { Asset, Leg, Strategy } from './types';
 
 export type Surfaces = Record<Asset, SurfaceState>;
 
-export function surfacesOf(market: MarketSim): Surfaces {
+export function surfacesOf(market: MarketSource): Surfaces {
   return { BTC: market.surface('BTC'), ETH: market.surface('ETH'), SOL: market.surface('SOL') };
 }
 
@@ -107,7 +108,7 @@ export function portfolioValue(strats: Strategy[], s: Surfaces, now: number): nu
 }
 
 /** 1-day Monte Carlo VaR / ES with full revaluation, correlated fat-tailed returns and IV shocks. */
-export function monteCarloVar(strats: Strategy[], market: MarketSim, now: number, rng: Rng, draws = 400) {
+export function monteCarloVar(strats: Strategy[], market: MarketSource, now: number, rng: Rng, draws = 400) {
   if (!strats.length) return { var95: 0, es95: 0, worst: 0 };
   const base = surfacesOf(market);
   const v0 = portfolioValue(strats, base, now);

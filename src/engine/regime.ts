@@ -1,5 +1,5 @@
 import { ASSETS, ASSET_LIST, STEPS_PER_HOUR } from './config';
-import type { MarketSim } from './market';
+import type { MarketSource } from './marketSource';
 import type { Asset, Regime, RegimeProbs } from './types';
 
 const REGIMES: Regime[] = ['BULL', 'NEUTRAL', 'BEAR', 'EXTREME'];
@@ -20,7 +20,7 @@ export class RegimeEngine {
     for (const a of ASSET_LIST) this.probs[a] = { BULL: 0.2, NEUTRAL: 0.55, BEAR: 0.2, EXTREME: 0.05 };
   }
 
-  features(market: MarketSim, a: Asset) {
+  features(market: MarketSource, a: Asset) {
     const m = market.assets[a];
     const c = ASSETS[a];
     const h = m.history;
@@ -36,7 +36,7 @@ export class RegimeEngine {
     return { z1, z4, volZ, liqP, funding: m.funding };
   }
 
-  update(market: MarketSim): void {
+  update(market: MarketSource): void {
     for (const a of ASSET_LIST) {
       const f = this.features(market, a);
       const s = {
@@ -53,8 +53,13 @@ export class RegimeEngine {
         p[r] = 0.9 * p[r] + 0.1 * (e[i] / sum);
       });
     }
-    const call = argmaxRegime(this.probs.BTC);
-    this.hits.push(call === market.regime ? 1 : 0);
+    if (!market.regimeObservable) {
+      // live: no ground truth — confidence = conviction of the BTC call
+      const p = this.probs.BTC;
+      this.hits.push(Math.max(p.BULL, p.NEUTRAL, p.BEAR, p.EXTREME));
+    } else {
+      this.hits.push(argmaxRegime(this.probs.BTC) === market.regime ? 1 : 0);
+    }
     if (this.hits.length > 720) this.hits.shift();
   }
 

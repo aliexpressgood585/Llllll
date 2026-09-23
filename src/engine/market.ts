@@ -3,6 +3,7 @@ import { Rng } from '../lib/rng';
 import { fmtExpiry } from '../lib/format';
 import { ASSETS, ASSET_LIST, REGIME_HOURS, REGIME_NEXT, REGIME_PARAMS, RISK_FREE, STEP_YEARS, STEPS_PER_HOUR } from './config';
 import { MS, listExpiries, yearsTo } from './time';
+import type { InstrumentSpec, MarketSource } from './marketSource';
 import type { Asset, AssetMarket, LiquidationCluster, MarketLiqEvent, OptionKey, OptionType, Quote, Regime } from './types';
 
 const LEVERAGES = [10, 20, 25, 50, 75, 100];
@@ -33,9 +34,16 @@ export interface SurfaceState {
   longIv: number;
   skew: number;
   smile: number;
+  /** live mode: market-implied vol by strike / tenor (sticky strike); shocks apply as atmIv - atm0 */
+  lookup?: (strike: number, T: number) => number | null;
+  atm0?: number;
 }
 
 export function surfaceIv(s: SurfaceState, strike: number, T: number, ivShift = 0): number {
+  if (s.lookup) {
+    const v = s.lookup(strike, T);
+    if (v !== null) return Math.max(0.05, v + (s.atmIv - (s.atm0 ?? s.atmIv)) + ivShift);
+  }
   const atmT = s.longIv + (s.atmIv - s.longIv) * Math.exp(-T / (10 / 365));
   const tEff = Math.max(T, 0.5 / 365);
   let x = Math.log(strike / s.spot) / (atmT * Math.sqrt(tEff));
@@ -49,7 +57,9 @@ export function theoPrice(s: SurfaceState, k: OptionKey, now: number, ivShift = 
   return bsPrice(s.spot, k.strike, T, RISK_FREE, surfaceIv(s, k.strike, T, ivShift), k.type);
 }
 
-export class MarketSim {
+export class MarketSim implements MarketSource {
+  readonly kind = 'sim' as const;
+  readonly regimeObservable = true;
   regime: Regime = 'NEUTRAL';
   regimeSince = 0;
   assets: Record<Asset, AssetMarket>;
@@ -209,6 +219,11 @@ export class MarketSim {
     this.liqEvents.push(...events);
     if (this.liqEvents.length > 200) this.liqEvents.splice(0, this.liqEvents.length - 200);
     return { events, regimeChanged };
+  }
+
+  spec(a: Asset): InstrumentSpec {
+    const c = ASSETS[a];
+    return { minQty: c.minQty, tick: c.tick, venues: c.venues };
   }
 
   /** Rescale an asset's price state to a new level (e.g. live index) keeping relative structure intact. */

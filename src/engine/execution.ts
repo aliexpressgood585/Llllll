@@ -1,7 +1,7 @@
 import { Rng } from '../lib/rng';
-import { ASSETS } from './config';
 import { tradeFee, liquidationFee } from './fees';
-import { MarketSim, hash01 } from './market';
+import { hash01 } from './market';
+import type { MarketSource } from './marketSource';
 import type { OptionKey, Venue } from './types';
 
 export interface ExecRequest extends OptionKey {
@@ -32,20 +32,20 @@ export interface ExecutionVenue {
 
 /** Simulated smart order router across Binance Options + Deribit with realistic microstructure. */
 export class SimExecution implements ExecutionVenue {
-  constructor(private market: MarketSim, private rng: Rng) {}
+  constructor(private market: MarketSource, private rng: Rng) {}
 
   execute(req: ExecRequest, now: number): ExecResult {
-    const c = ASSETS[req.asset];
+    const c = this.market.spec(req.asset);
     const q = this.market.quote(req, now);
     const buy = req.qty > 0;
     const size = Math.abs(req.qty);
     const stressed = this.market.regime === 'EXTREME';
 
     // route: pick best touch among venues listing the asset
-    let venue: Venue = 'BINANCE';
+    let venue: Venue = c.venues[0];
     let touch = buy ? q.ask : q.bid;
     for (const v of c.venues) {
-      if (v === 'BINANCE') continue;
+      if (v === c.venues[0]) continue;
       const off = 1 + 0.006 * (hash01(`${q.symbol}${v}${Math.floor(now / 120e3)}`) - 0.5);
       const t = buy ? q.ask * off : q.bid * off;
       if ((buy && t < touch) || (!buy && t > touch)) {
@@ -60,6 +60,7 @@ export class SimExecution implements ExecutionVenue {
     if (!req.liquidation) {
       const rejectP = stressed ? 0.035 : 0.01;
       if (this.rng.chance(rejectP)) return { ok: false, reason: 'VENUE_REJECT', price: 0, touch, venue, fee: 0, slippageBp: 0, latencyMs };
+      if (buy && q.ask <= 0) return { ok: false, reason: 'NO_ASK', price: 0, touch, venue, fee: 0, slippageBp: 0, latencyMs };
       if (!buy && q.bid <= 0) return { ok: false, reason: 'NO_BID', price: 0, touch, venue, fee: 0, slippageBp: 0, latencyMs };
     }
 

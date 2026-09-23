@@ -1,7 +1,7 @@
 import { fmtExpiry } from '../lib/format';
 import { Rng } from '../lib/rng';
-import { ASSETS, STRATEGY_RULES } from './config';
-import type { MarketSim } from './market';
+import { STRATEGY_RULES } from './config';
+import type { MarketSource } from './marketSource';
 import { MS } from './time';
 import type { Asset, OptionKey, OptionType, RegimeProbs, StrategyKind } from './types';
 
@@ -19,7 +19,7 @@ export interface StrategyPlan {
   score: number;
 }
 
-function expiryNear(market: MarketSim, now: number, targetDays: number, minHours = 3): number {
+function expiryNear(market: MarketSource, now: number, targetDays: number, minHours = 3): number {
   const list = market.expiries(now).filter((e) => e - now > minHours * MS.HOUR);
   return list.reduce((b, e) => (Math.abs((e - now) / MS.DAY - targetDays) < Math.abs((b - now) / MS.DAY - targetDays) ? e : b), list[0]);
 }
@@ -28,9 +28,15 @@ function leg(asset: Asset, expiry: number, strike: number, type: OptionType, rat
   return { asset, expiry, strike, type, ratio };
 }
 
+/** next listed strike strictly beyond `strike` in direction dir (falls back to a 2% step) */
+function beyond(market: MarketSource, asset: Asset, expiry: number, strike: number, dir: 1 | -1, now: number): number {
+  const ks = market.strikes(asset, expiry, now).filter((x) => (dir > 0 ? x > strike : x < strike)).sort((a, b) => (a - b) * dir);
+  return ks[0] ?? strike * (1 + 0.02 * dir);
+}
+
 const k = (v: number) => (v >= 1000 ? `${Math.round(v / 100) / 10}K`.replace('.0K', 'K') : String(v));
 
-export function buildPlan(kind: StrategyKind, asset: Asset, market: MarketSim, now: number, bias: 1 | -1 = 1): StrategyPlan {
+export function buildPlan(kind: StrategyKind, asset: Asset, market: MarketSource, now: number, bias: 1 | -1 = 1): StrategyPlan {
   const sd = (e: number, t: OptionType, d: number) => market.strikeForDelta(asset, e, t, d, now);
   const tagBase = STRATEGY_RULES[kind].label;
   let legs: LegSpec[] = [];
@@ -40,9 +46,9 @@ export function buildPlan(kind: StrategyKind, asset: Asset, market: MarketSim, n
     case 'IRON_CONDOR': {
       expiry = expiryNear(market, now, 4);
       const sc = sd(expiry, 'C', 0.2);
-      const lc = Math.max(sd(expiry, 'C', 0.07), sc + ASSETS[asset].strikeStep);
+      const lc = Math.max(sd(expiry, 'C', 0.07), beyond(market, asset, expiry, sc, 1, now));
       const sp = sd(expiry, 'P', -0.2);
-      const lp = Math.min(sd(expiry, 'P', -0.07), sp - ASSETS[asset].strikeStep);
+      const lp = Math.min(sd(expiry, 'P', -0.07), beyond(market, asset, expiry, sp, -1, now));
       legs = [leg(asset, expiry, sc, 'C', -1), leg(asset, expiry, lc, 'C', 1), leg(asset, expiry, sp, 'P', -1), leg(asset, expiry, lp, 'P', 1)];
       label = `${asset} IC ${k(sc)}/${k(sp)}`;
       break;

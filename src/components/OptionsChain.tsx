@@ -18,14 +18,25 @@ export function OptionsChain({ s }: { s: DeskSnapshot }) {
 
   const rows = useMemo(() => {
     const all = s.chains[asset];
+    // strike window = N listed strikes either side of spot, per expiry (works for sim grids and Deribit listings)
+    const near = new Map<number, Set<number>>();
+    for (const r of all) {
+      if (!near.has(r.expiry)) {
+        const ks = [...new Set(all.filter((x) => x.expiry === r.expiry).map((x) => x.strike))].sort((a, b) => a - b);
+        let atm = 0;
+        ks.forEach((k, i) => {
+          if (Math.abs(k - spot) < Math.abs(ks[atm] - spot)) atm = i;
+        });
+        near.set(r.expiry, new Set(ks.slice(Math.max(0, atm - width), atm + width + 1)));
+      }
+    }
     return all.filter((r) => {
       if (tf !== 'ALL' && r.type !== tf) return false;
       if (expiry !== 'ALL' && r.expiry !== expiry) return false;
       if (posOnly) return r.position !== 0;
-      const step = Math.abs(r.strike - spot) / (cfg.strikeStep * ((r.expiry - s.now) / 86400000 > 20 ? 2 : 1));
-      return step <= width || r.position !== 0;
+      return near.get(r.expiry)!.has(r.strike) || r.position !== 0;
     });
-  }, [s.chains, s.now, asset, tf, expiry, posOnly, width, spot, cfg.strikeStep]);
+  }, [s.chains, asset, tf, expiry, posOnly, width, spot]);
 
   const dp = asset === 'BTC' ? 2 : asset === 'ETH' ? 1 : 0;
   const px = (v: number) => (v <= 0 ? '—' : fmtNum(v, asset === 'BTC' ? 0 : asset === 'ETH' ? 1 : 2));
@@ -35,7 +46,7 @@ export function OptionsChain({ s }: { s: DeskSnapshot }) {
     <Panel
       title={
         <span>
-          שרשרת אופציות חיה · <span className="text-accent">{asset}</span> <span className="num text-dim">{fmtNum(spot, cfg.decimals)}</span> · {expiry === 'ALL' ? 'כל הפקיעות' : fmtExpiryLong(expiry)}
+          {s.source.mode === 'live' ? 'שרשרת אופציות Deribit' : 'שרשרת אופציות (סימולציה)'} · <span className="text-accent">{asset}</span> <span className="num text-dim">{fmtNum(spot, cfg.decimals)}</span> · {expiry === 'ALL' ? 'כל הפקיעות' : fmtExpiryLong(expiry)}
         </span>
       }
       right={
