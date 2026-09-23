@@ -73,3 +73,14 @@ body {
 .panel-glow {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
+
+
+button, select, input { min-height: 36px; }
+button, select { cursor: pointer; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+@media (max-width: 640px) {
+  button, select, input { min-height: 44px; }
+  header h1 { font-size: 16px; letter-spacing: 0; }
+  header > div { max-width: 100%; flex-wrap: wrap; }
+}

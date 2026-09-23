@@ -37,7 +37,7 @@ export function Header({ s, c }: { s: DeskSnapshot; c: DeskControls }) {
             </span>
           </div>
           <div className="num text-[10px] text-muted">
-            חשבון #{s.attempt} · הון התחלתי {fmtUsd(a.start)} · אגרסיביות <span className="text-down">גבוהה</span> · מחיקות <span className={s.blowups ? 'text-down' : 'text-dim'}>{s.blowups}</span> · חיסולים <span className={a.liqCount ? 'text-down' : 'text-dim'}>{a.liqCount}</span>
+            חשבון #{s.attempt} · הון התחלתי {fmtUsd(a.start)} · סיכון <span className="text-warn">מוגבל</span> · מחיקות <span className={s.blowups ? 'text-down' : 'text-dim'}>{s.blowups}</span> · חיסולים <span className={a.liqCount ? 'text-down' : 'text-dim'}>{a.liqCount}</span>
           </div>
         </div>
       </div>
@@ -69,18 +69,18 @@ export function Header({ s, c }: { s: DeskSnapshot; c: DeskControls }) {
         {!live && (<div className="flex overflow-hidden rounded-[3px] border border-line2">
           {SPEEDS.map((sp) => (
             <button key={sp} onClick={() => c.setSpeed(sp)} className={`num px-2 py-1 text-[10px] font-semibold ${c.speed === sp ? 'bg-accent/20 text-accent' : 'text-muted hover:text-dim'}`}>
-              {sp}x
+              {sp * 240}x
             </button>
           ))}
         </div>)}
-        <button onClick={c.toggle} title={c.running ? 'השהה' : 'המשך'} className="grid h-7 w-7 place-items-center rounded-[3px] border border-line2 text-dim hover:text-white">
+        <button onClick={c.toggle} aria-label={c.running ? 'השהה' : 'המשך'} title={c.running ? 'השהה' : 'המשך'} className="grid h-7 w-7 place-items-center rounded-[3px] border border-line2 text-dim hover:text-white">
           {c.running ? (
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor"><rect x="3" y="2" width="3.5" height="12" /><rect x="9.5" y="2" width="3.5" height="12" /></svg>
           ) : (
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="currentColor"><path d="M4 2l10 6-10 6z" /></svg>
           )}
         </button>
-        <button onClick={c.reset} title={live ? 'איפוס ספר המסחר על נייר' : 'סימולציה חדשה'} className="grid h-7 w-7 place-items-center rounded-[3px] border border-line2 text-dim hover:text-white">
+        <button onClick={c.reset} aria-label={live ? 'איפוס ספר המסחר על נייר' : 'איפוס סימולציה'} title={live ? 'איפוס ספר המסחר על נייר' : 'סימולציה חדשה'} className="grid h-7 w-7 place-items-center rounded-[3px] border border-line2 text-dim hover:text-white">
           <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2v3h-3" /></svg>
         </button>
         <div className="ms-1 text-end">
@@ -91,3 +91,4 @@ export function Header({ s, c }: { s: DeskSnapshot; c: DeskControls }) {
     </header>
   );
 }
+

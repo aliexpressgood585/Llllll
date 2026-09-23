@@ -35,9 +35,10 @@ export function useDesk(): [DeskSnapshot, DeskControls] {
   const engineRef = useRef<DeskEngine | null>(null);
   if (!engineRef.current) engineRef.current = new DeskEngine();
   const [snap, setSnap] = useState<DeskSnapshot>(() => engineRef.current!.snapshot());
-  const [running, setRunning] = useState(true);
-  const [speed, setSpeed] = useState(4);
   const [mode, setModeState] = useState<DataMode>(initialMode);
+  // live paper trading runs by default; the simulation starts paused
+  const [running, setRunning] = useState(mode === 'live');
+  const [speed, setSpeed] = useState(1);
   const [connecting, setConnecting] = useState(mode === 'live');
   const [fallbackReason, setFallback] = useState<string | null>(null);
   const liveRef = useRef<{ market: LiveMarket; liqs: BinanceLiquidationStream; lastStep: number } | null>(null);
@@ -64,6 +65,7 @@ export function useDesk(): [DeskSnapshot, DeskControls] {
         liveRef.current = { market, liqs, lastStep: Date.now() };
         setSnap(engine.snapshot());
         setConnecting(false);
+        setRunning(true);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -71,6 +73,7 @@ export function useDesk(): [DeskSnapshot, DeskControls] {
         const msg = e instanceof Error ? e.message : String(e);
         setFallback(`הנתונים החיים לא זמינים (${msg}) — מוצגת סימולציה`);
         setConnecting(false);
+        setRunning(false);
         setModeState('sim');
       });
     return () => {
@@ -110,7 +113,10 @@ export function useDesk(): [DeskSnapshot, DeskControls] {
         } else {
           for (let i = 0; i < speed; i++) e.step();
         }
-        setSnap(e.snapshot());
+        const next = e.snapshot();
+        // a wiped-out account stays frozen until an explicit reset
+        if (next.blowup.active) setRunning(false);
+        setSnap(next);
       },
       live ? LIVE_FRAME_MS : FRAME_MS,
     );
@@ -133,10 +139,12 @@ export function useDesk(): [DeskSnapshot, DeskControls] {
       engine.step();
       engineRef.current = engine;
       setSnap(engine.snapshot());
+      setRunning(true);
       return;
     }
     engineRef.current = new DeskEngine();
     setSnap(engineRef.current.snapshot());
+    setRunning(false);
   }, [mode]);
 
   return [snap, { running, speed, mode, fallbackReason, connecting, setSpeed, setMode, toggle, reset }];
