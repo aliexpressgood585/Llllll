@@ -1,6 +1,7 @@
 import type { TradingBot } from './bot';
 import { CONFIG } from './config';
 import type { OptionsMarket } from './market';
+import { buildReport } from './report';
 
 /** JSON view served to the dashboard at /api/state */
 export function buildSnapshot(bot: TradingBot, market: OptionsMarket, liqConnected: boolean) {
@@ -30,6 +31,7 @@ export function buildSnapshot(bot: TradingBot, market: OptionsMarket, liqConnect
   return {
     time: now,
     mode: CONFIG.mode,
+    report: buildReport(s, eq.bid),
     status: {
       dataAgeMs: now - market.lastQuotes,
       contracts: market.contracts.size,
