@@ -1,0 +1,347 @@
+<title>משרד הסוכנים</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --void: #0b0f16;
+    --grid: #3a2a12;
+    --floor: #1c2533;
+    --floor-line: #253043;
+    --wall: #3b475a;
+    --wall-hi: #5b6a82;
+    --panel: #121925;
+    --panel-hi: #1a2334;
+    --ink: #e9e4d4;
+    --dim: #9aa3b5;
+    --muted: #677189;
+    --plate: #e8b04a;
+    --working: #3ddc84;
+    --needs: #ffcc33;
+    --review: #5ab0ff;
+    --done: #8a94a6;
+    --failed: #ff5a5f;
+    --pixel: 'Silkscreen', 'Rubik', ui-monospace, monospace;
+    --text: 'Rubik', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--void); color: var(--ink); }
+  body {
+    margin: 0;
+    font-family: var(--text);
+    padding-inline: 16px;
+    padding-block: 14px 28px;
+    background:
+      linear-gradient(var(--void), var(--void)) padding-box,
+      var(--void);
+    background-image:
+      linear-gradient(to right, rgba(232,176,74,0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(232,176,74,0.07) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap { max-width: 1500px; margin-inline: auto; display: grid; gap: 14px; }
+
+  /* HUD */
+  .hud { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--panel); border: 2px solid var(--wall); box-shadow: 0 0 0 2px #06080d, inset 0 2px 0 var(--wall-hi); padding: 10px 14px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand h1 { margin: 0; font-family: var(--text); font-weight: 700; font-size: 22px; letter-spacing: 0.01em; }
+  .brand small { display: block; color: var(--dim); font-size: 12px; margin-top: 2px; }
+  .logo { width: 34px; height: 34px; image-rendering: pixelated; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-family: var(--text); font-size: 13px; color: var(--ink); background: var(--panel-hi); border: 2px solid #2a3548;
+    padding: 5px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+  .chip:hover { border-color: var(--wall-hi); }
+  .chip[aria-pressed="true"] { border-color: var(--plate); box-shadow: inset 0 -2px 0 var(--plate); }
+  .chip:focus-visible, .desk:focus-visible, .qitem:focus-visible { outline: 2px solid var(--plate); outline-offset: 2px; }
+  .chip b { font-family: var(--pixel); font-size: 14px; font-weight: 700; }
+  .dot { width: 9px; height: 9px; display: inline-block; }
+  .s-working { background: var(--working); } .s-needs_input { background: var(--needs); } .s-review { background: var(--review); }
+  .s-done { background: var(--done); } .s-failed { background: var(--failed); }
+  .stamp { color: var(--muted); font-size: 12px; }
+
+  /* layout */
+  .main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+  @media (max-width: 1050px) { .main { grid-template-columns: 1fr; } }
+
+  /* office floor */
+  .floor { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+  @media (max-width: 420px) { .floor { grid-template-columns: 1fr; } }
+  .room { background-color: var(--floor);
+    background-image: linear-gradient(to right, var(--floor-line) 2px, transparent 2px), linear-gradient(to bottom, var(--floor-line) 2px, transparent 2px);
+    background-size: 32px 32px; border: 6px solid var(--wall); box-shadow: 0 0 0 2px #06080d, inset 0 0 0 2px var(--wall-hi), 0 8px 0 rgba(0,0,0,0.35);
+    padding: 0 12px 12px; position: relative; min-height: 160px; }
+  .room.empty { opacity: 0.55; }
+  .roomhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 -12px 12px; padding: 7px 12px;
+    background: #2a3446; border-bottom: 3px solid #0e131c; }
+  .plate { font-family: var(--text); font-weight: 700; font-size: 14px; color: #1b1407; background: var(--plate);
+    padding: 3px 9px; box-shadow: inset 0 -3px 0 #b07c22, 0 0 0 2px #1b1407; }
+  .repo { font-family: var(--pixel); font-size: 11px; color: var(--dim); direction: ltr; }
+  .desks { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px 8px; }
+  .desk { background: none; border: 0; padding: 0; color: inherit; cursor: pointer; display: grid; justify-items: center; gap: 4px; text-align: center; }
+  .desk canvas { width: 96px; height: 90px; image-rendering: pixelated; display: block; }
+  .desk .nm { font-size: 11.5px; line-height: 1.25; color: var(--ink); max-width: 110px; overflow-wrap: anywhere;
+    background: rgba(8,11,17,0.72); padding: 2px 5px; border-bottom: 2px solid transparent; }
+  .desk[data-status="needs_input"] .nm { border-bottom-color: var(--needs); }
+  .desk[data-status="working"] .nm { border-bottom-color: var(--working); }
+  .desk[data-status="failed"] .nm { border-bottom-color: var(--failed); }
+  .desk[data-status="review"] .nm { border-bottom-color: var(--review); }
+  .desk.sel .nm { background: var(--plate); color: #1b1407; }
+  .vacant { color: var(--muted); font-size: 12px; padding: 18px 4px; }
+
+  /* side panel */
+  .side { display: grid; gap: 14px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 10px); }
+  @media (max-width: 1050px) { .side { position: static; } }
+  .box { background: var(--panel); border: 2px solid var(--wall); box-shadow: 0 0 0 2px #06080d; }
+  .box h2 { margin: 0; font-size: 14px; font-weight: 700; padding: 8px 12px; background: #1e2738; border-bottom: 2px solid #0e131c;
+    display: flex; justify-content: space-between; align-items: center; }
+  .box h2 .pix { font-family: var(--pixel); color: var(--needs); font-size: 13px; }
+  .queue { max-height: 360px; overflow: auto; }
+  .qitem { display: block; width: 100%; text-align: start; background: none; border: 0; border-bottom: 1px solid #1f2837; color: inherit;
+    padding: 9px 12px; cursor: pointer; font-family: var(--text); }
+  .qitem:hover { background: var(--panel-hi); }
+  .qitem .t { font-size: 13px; font-weight: 500; }
+  .qitem .a { font-size: 12.5px; color: var(--needs); margin-top: 3px; line-height: 1.4; }
+  .qitem .m { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .detail { padding: 12px; display: grid; gap: 10px; font-size: 13px; line-height: 1.5; }
+  .detail .ttl { font-size: 17px; font-weight: 700; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 8px; background: var(--panel-hi); border: 1px solid #2a3548; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; }
+  .num { font-family: var(--pixel); font-size: 12px; direction: ltr; unicode-bidi: isolate; }
+  .act { background: #2a2208; border: 1px solid #6e5712; color: var(--needs); padding: 8px 10px; }
+  .links { display: flex; flex-wrap: wrap; gap: 6px; }
+  .links a { color: #1b1407; background: var(--plate); text-decoration: none; font-size: 12.5px; font-weight: 500; padding: 5px 9px; box-shadow: inset 0 -2px 0 #b07c22; }
+  .links a.sec { background: var(--panel-hi); color: var(--ink); box-shadow: inset 0 -2px 0 #2a3548; }
+  .hint { color: var(--muted); font-size: 12.5px; padding: 14px 12px; }
+  .state { color: var(--dim); font-size: 13px; padding: 30px 16px; text-align: center; background: var(--panel); border: 2px dashed var(--wall); }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="hud">
+    <div class="brand">
+      <canvas class="logo" id="logo" width="12" height="12" aria-hidden="true"></canvas>
+      <div>
+        <h1>משרד הסוכנים</h1>
+        <small>כל הפרויקטים וכל סוכני Claude Code שלך במבט אחד</small>
+      </div>
+    </div>
+    <div class="chips" id="chips" role="toolbar" aria-label="סינון לפי מצב"></div>
+    <div class="stamp" id="stamp"></div>
+  </header>
+
+  <div class="main">
+    <section class="floor" id="floor" aria-label="חדרי הפרויקטים">
+      <div class="state" id="loading">טוען את המשרד…</div>
+    </section>
+    <aside class="side">
+      <div class="box">
+        <h2>צריכים אותך <span class="pix" id="qcount">0</span></h2>
+        <div class="queue" id="queue"></div>
+      </div>
+      <div class="box">
+        <h2>פרטי סוכן</h2>
+        <div id="detail"><div class="hint">לחץ על סוכן בשולחן כדי לראות מה הוא עושה ומה הוא צריך ממך.</div></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STATUS = {
+    working: { he: 'עובד עכשיו', color: '#3ddc84' },
+    needs_input: { he: 'מחכה לך', color: '#ffcc33' },
+    review: { he: 'מוכן לבדיקה', color: '#5ab0ff' },
+    done: { he: 'הושלם', color: '#8a94a6' },
+    failed: { he: 'נתקע', color: '#ff5a5f' },
+  };
+  const ORDER = ['working', 'needs_input', 'review', 'done', 'failed'];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let agents = [];
+  let rooms = [];
+  let meta = null;
+  let filter = 'all';
+  let selected = null;
+  try { filter = localStorage.getItem('office-filter') || 'all'; } catch { /* storage unavailable */ }
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+
+  function ago(iso) {
+    const ms = Date.now() - new Date(iso).getTime();
+    if (!isFinite(ms)) return '';
+    const m = Math.round(ms / 60000);
+    if (m < 60) return m <= 1 ? 'עכשיו' : `לפני ${m} דק׳`;
+    const h = Math.round(m / 60);
+    if (h < 24) return h === 1 ? 'לפני שעה' : `לפני ${h} שעות`;
+    const d = Math.round(h / 24);
+    return d === 1 ? 'אתמול' : `לפני ${d} ימים`;
+  }
+
+  // ---------- pixel sprites ----------
+  function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  const SKIN = ['#f1c7a0', '#d9a172', '#a86b43', '#7a4a2c', '#f5d5b8'];
+  const HAIR = ['#2b1d12', '#6b3b1d', '#d9a441', '#1a1a1a', '#b5462c', '#e6e0cf'];
+  const SHIRT = ['#3a7bd5', '#e05d44', '#48a868', '#e8b04a', '#8e5bd0', '#2fb3b3', '#d64f8c', '#c9c9c9'];
+
+  function drawAgent(ctx, a, t) {
+    const h = hash(a.id);
+    const skin = SKIN[h % SKIN.length], hair = HAIR[(h >> 3) % HAIR.length], shirt = SHIRT[(h >> 6) % SHIRT.length];
+    const px = (x, y, w, hh, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, hh); };
+    ctx.clearRect(0, 0, 32, 30);
+    const st = a.status;
+    const tick = reduced ? 0 : t;
+    // chair (behind the person)
+    px(11, 19, 10, 8, '#34507a'); px(11, 26, 10, 1, '#22354f'); px(15, 27, 2, 2, '#1c2533');
+    // person
+    const bob = st === 'working' && tick % 2 ? 1 : 0;
+    const slump = st === 'failed' ? 1 : 0;
+    px(12, 19 + bob, 8, 6, shirt);
+    px(12, 24 + bob, 8, 1, 'rgba(0,0,0,0.25)');
+    px(13, 13 + bob + slump, 6, 6, skin);
+    px(13, 13 + bob + slump, 6, 2, hair); px(13, 15 + bob + slump, 1, 2, hair); px(18, 15 + bob + slump, 1, 2, hair);
+    // arms reach to keyboard when working, rest otherwise
+    if (st === 'working') { px(10, 15 + (tick % 2), 2, 5, shirt); px(20, 15 + ((tick + 1) % 2), 2, 5, shirt); px(10, 14 + (tick % 2), 2, 1, skin); px(20, 14 + ((tick + 1) % 2), 2, 1, skin); }
+    else { px(10, 20, 2, 4, shirt); px(20, 20, 2, 4, shirt); }
+    // desk (in front, top of sprite)
+    px(3, 6, 26, 7, '#d9cfae'); px(3, 12, 26, 1, '#a89d7c'); px(4, 13, 2, 3, '#7c7359'); px(26, 13, 2, 3, '#7c7359');
+    // keyboard + mug
+    px(12, 10, 8, 2, '#5b6474'); px(24, 8, 2, 3, '#e8e8e8');
+    // monitor
+    px(10, 0, 12, 8, '#161c26'); px(15, 8, 2, 1, '#161c26');
+    const scr = STATUS[st] ? STATUS[st].color : '#8a94a6';
+    if (st === 'working') {
+      px(11, 1, 10, 6, '#0f2c22');
+      for (let r = 0; r < 3; r++) { const w = 3 + ((h >> (r * 2)) + tick + r) % 6; px(12, 2 + r * 2, w, 1, '#3ddc84'); }
+    } else if (st === 'review') {
+      px(11, 1, 10, 6, '#12304f'); px(14, 2, 4, 4, '#dbeafe'); px(15, 3, 2, 1, '#5ab0ff'); px(15, 4, 2, 1, '#5ab0ff');
+    } else if (st === 'done') {
+      px(11, 1, 10, 6, '#1f2633'); px(13, 4, 1, 1, '#3ddc84'); px(14, 5, 1, 1, '#3ddc84'); px(15, 4, 1, 1, '#3ddc84'); px(16, 3, 1, 1, '#3ddc84'); px(17, 2, 1, 1, '#3ddc84');
+    } else if (st === 'failed') {
+      px(11, 1, 10, 6, '#3a1216'); for (let i = 0; i < 4; i++) { px(14 + i, 2 + i, 1, 1, '#ff5a5f'); px(17 - i, 2 + i, 1, 1, '#ff5a5f'); }
+      if (!reduced) { const s = tick % 4; px(23 + (s % 2), 3 - s, 2, 2, 'rgba(160,160,170,0.55)'); }
+    } else {
+      px(11, 1, 10, 6, '#2e2608'); px(15, 2, 2, 3, scr);
+    }
+    // "needs you" speech bubble
+    if (st === 'needs_input' && (reduced || tick % 4 !== 3)) {
+      px(23, 12, 8, 7, '#fff4cc'); px(23, 12, 8, 1, '#ffcc33'); px(22, 19, 2, 1, '#fff4cc');
+      px(26, 13, 2, 3, '#b8860b'); px(26, 17, 2, 1, '#b8860b');
+    }
+  }
+
+  function drawLogo() {
+    const c = $('logo'); const x = c.getContext('2d');
+    const P = ['..aaaaaaaa..', '.a########a.', 'a#bbbbbbbb#a', 'a#b......b#a', 'a#b.g..g.b#a', 'a#b......b#a', 'a#b.gggg.b#a', 'a#bbbbbbbb#a', '.a########a.', '..aaaaaaaa..', '....a..a....', '...aaaaaa...'];
+    const C = { a: '#e8b04a', '#': '#161c26', b: '#0f2c22', g: '#3ddc84' };
+    P.forEach((row, y) => [...row].forEach((ch, i) => { if (C[ch]) { x.fillStyle = C[ch]; x.fillRect(i, y, 1, 1); } }));
+  }
+
+  // ---------- render ----------
+  const canvases = [];
+  function render() {
+    const floor = $('floor');
+    floor.textContent = '';
+    canvases.length = 0;
+    const counts = Object.fromEntries(ORDER.map((s) => [s, 0]));
+    agents.forEach((a) => { if (counts[a.status] !== undefined) counts[a.status]++; });
+
+    // chips
+    const chips = $('chips'); chips.textContent = '';
+    const mk = (key, label, n) => {
+      const b = el('button', 'chip'); b.type = 'button'; b.setAttribute('aria-pressed', String(filter === key));
+      if (key !== 'all') { const d = el('span', `dot s-${key}`); b.append(d); }
+      b.append(el('span', '', label), el('b', '', String(n)));
+      b.addEventListener('click', () => { filter = key; try { localStorage.setItem('office-filter', key); } catch { /* ignore */ } render(); });
+      chips.append(b);
+    };
+    mk('all', 'כולם', agents.length);
+    ORDER.forEach((s) => mk(s, STATUS[s].he, counts[s]));
+
+    const visible = agents.filter((a) => filter === 'all' || a.status === filter);
+    const roomList = [...rooms].sort((x, y) => (x.order ?? 99) - (y.order ?? 99));
+    for (const r of roomList) {
+      const ra = visible.filter((a) => a.project === r.id)
+        .sort((x, y) => ORDER.indexOf(x.status) - ORDER.indexOf(y.status) || String(y.updatedAt).localeCompare(String(x.updatedAt)));
+      if (filter !== 'all' && !ra.length) continue;
+      const room = el('article', 'room' + (ra.length ? '' : ' empty'));
+      const head = el('div', 'roomhead');
+      head.append(el('span', 'plate', r.name), el('span', 'repo', r.repo));
+      room.append(head);
+      if (!ra.length) room.append(el('div', 'vacant', r.note || 'אין סוכן בחדר הזה כרגע'));
+      const desks = el('div', 'desks');
+      for (const a of ra) {
+        const d = el('button', 'desk' + (selected === a.id ? ' sel' : '')); d.type = 'button'; d.dataset.status = a.status;
+        d.setAttribute('aria-label', `${a.name} — ${STATUS[a.status]?.he ?? ''}`);
+        const cv = el('canvas'); cv.width = 32; cv.height = 30;
+        canvases.push({ cv, a });
+        d.append(cv, el('span', 'nm', a.name));
+        d.addEventListener('click', () => { selected = a.id; render(); showDetail(a); });
+        desks.append(d);
+      }
+      room.append(desks);
+      floor.append(room);
+    }
+    if (!floor.children.length) floor.append(el('div', 'state', 'אין סוכנים במצב הזה'));
+    paint();
+
+    // needs-you queue
+    const q = $('queue'); q.textContent = '';
+    const needs = agents.filter((a) => a.status === 'needs_input' || a.status === 'failed')
+      .sort((x, y) => String(y.updatedAt).localeCompare(String(x.updatedAt)));
+    $('qcount').textContent = String(needs.length);
+    if (!needs.length) q.append(el('div', 'hint', 'אף סוכן לא מחכה לך כרגע.'));
+    for (const a of needs) {
+      const it = el('button', 'qitem'); it.type = 'button';
+      const room = rooms.find((r) => r.id === a.project);
+      it.append(el('div', 't', `${a.name} · ${room ? room.name : a.project}`), el('div', 'a', a.needsAction || a.detail || ''), el('div', 'm', `${STATUS[a.status].he} · ${ago(a.updatedAt)}`));
+      it.addEventListener('click', () => { selected = a.id; render(); showDetail(a); });
+      q.append(it);
+    }
+    if (selected) { const a = agents.find((x) => x.id === selected); if (a) showDetail(a); }
+    $('stamp').textContent = meta && meta.updatedAt ? `עודכן ${ago(meta.updatedAt)}` : '';
+  }
+
+  function showDetail(a) {
+    const box = $('detail'); box.textContent = '';
+    const d = el('div', 'detail');
+    const room = rooms.find((r) => r.id === a.project);
+    const badge = el('span', 'badge'); badge.append(el('span', `dot s-${a.status}`), el('span', '', STATUS[a.status]?.he ?? a.status));
+    d.append(el('div', 'ttl', a.name), badge);
+    if (a.detail) d.append(el('div', '', a.detail));
+    if (a.needsAction) { const act = el('div', 'act'); act.append(el('strong', '', 'מה צריך ממך: '), document.createTextNode(a.needsAction)); d.append(act); }
+    const kv = el('dl', 'kv');
+    const row = (k, v, isNum) => { kv.append(el('dt', '', k)); const dd = el('dd', isNum ? 'num' : '', v); kv.append(dd); };
+    row('פרויקט', room ? room.name : a.project);
+    row('ריפו', a.repo || (room && room.repo) || '', true);
+    if (a.model) row('מודל', a.model, true);
+    row('פעילות אחרונה', ago(a.updatedAt));
+    if (typeof a.costUsd === 'number') row('עלות מצטברת', `$${a.costUsd.toFixed(2)}`, true);
+    d.append(kv);
+    const links = el('div', 'links');
+    if (a.url) { const l = el('a', '', 'פתח את הסשן'); l.href = a.url; l.target = '_blank'; l.rel = 'noopener'; links.append(l); }
+    for (const art of a.artifacts || []) { const l = el('a', 'sec', art.title); l.href = art.url; l.target = '_blank'; l.rel = 'noopener'; links.append(l); }
+    if (links.children.length) d.append(links);
+    box.append(d);
+  }
+
+  let t = 0;
+  function paint() { for (const { cv, a } of canvases) drawAgent(cv.getContext('2d'), a, t); }
+  if (!reduced) setInterval(() => { t++; paint(); }, 280);
+
+  drawLogo();
+
+  // ---------- data ----------
+  (async () => {
+    const db = await window.claude?.use?.('db');
+    if (!db) { $('loading').textContent = 'אין גישה לנתוני המשרד בתצוגה הזו.'; return; }
+    const fail = () => { $('loading') && ($('loading').textContent = 'לא הצלחתי לטעון את נתוני המשרד. רענן את הדף.'); };
+    db.collection('rooms').onSnapshot((snap) => { rooms = snap.docs.map((d) => ({ id: d.id, ...d.data() })); render(); }, fail);
+    db.collection('agents').onSnapshot((snap) => { agents = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((a) => STATUS[a.status]); render(); }, fail);
+    db.doc('meta/office').onSnapshot((snap) => { meta = snap.exists ? snap.data() : null; render(); }, fail);
+  })();
+})();
+</script>

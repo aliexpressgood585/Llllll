@@ -1,0 +1,1 @@
+{"project": "archion", "name": "התחברות עם Google", "status": "needs_input", "detail": "Supabase הוגדר; חסרים פרטי OAuth מ-Google Cloud.", "model": "claude-sonnet-4-6", "updatedAt": "2026-06-17T07:46:19Z", "url": "https://claude.ai/code/session_018taVikZMbPrxUUFgRmkmeW", "artifacts": [], "needsAction": "ליצור OAuth Client ID ב-Google Cloud Console ולשלוח Client ID + Secret"}
