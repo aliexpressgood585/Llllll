@@ -50,7 +50,13 @@ export function House() {
       onLog: (entry) => setLog((l) => [entry, ...l].slice(0, 60)),
     });
     eng.current = e;
-    return () => { e.destroy(); eng.current = null; };
+    // phones get the tower layout: the whole house fits the screen width and residents are drawn bigger
+    const wrap = wrapRef.current;
+    const layout = () => e.setLayout((wrap?.clientWidth ?? innerWidth) < 640);
+    layout();
+    const ro = new ResizeObserver(layout);
+    if (wrap) ro.observe(wrap);
+    return () => { ro.disconnect(); e.destroy(); eng.current = null; };
   }, []);
   useEffect(() => { eng.current?.setResidents(residents); }, [residents]);
   useEffect(() => { const e = eng.current; if (!e) return; e.setMode(prefs.mode); e.setLabels(prefs.labels); e.setHighlight(prefs.project); e.speed = prefs.speed; }, [prefs]);
