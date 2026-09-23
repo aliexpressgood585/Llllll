@@ -18,11 +18,47 @@ import { TradeBlotter } from './components/TradeBlotter';
 import { VolRegimePanel } from './components/VolRegimePanel';
 import { LiveMarket } from './components/LiveMarket';
 import { useDesk } from './hooks/useDesk';
+import { useState, type ReactNode } from 'react';
+import { BotDashboard } from './bot/BotDashboard';
+
+type Tab = 'bot' | 'lab';
 
 export default function App() {
+  const [tab, setTab] = useState<Tab>(() => (location.hash === '#lab' || location.hash === '#sim' || location.hash === '#live' ? 'lab' : 'bot'));
+  const go = (t: Tab) => {
+    setTab(t);
+    try {
+      history.replaceState(null, '', `#${t}`);
+    } catch {
+      /* ignore */
+    }
+  };
+  const nav = (
+    <nav className="flex items-center gap-1 rounded-[3px] border border-line bg-panel px-2 py-1.5">
+      <span className="me-2 text-[13px] font-bold text-white">נקסוס קוואנט</span>
+      {([['bot', 'בוט Binance'], ['lab', 'מעבדת אסטרטגיות']] as const).map(([k, label]) => (
+        <button key={k} onClick={() => go(k)} className={`rounded-[3px] px-3 py-1 text-[12px] font-semibold ${tab === k ? 'bg-accent/15 text-accent' : 'text-muted hover:text-dim'}`}>
+          {label}
+        </button>
+      ))}
+    </nav>
+  );
+  if (tab === 'bot') {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-[2200px] flex-col gap-2 p-2">
+        {nav}
+        <BotDashboard />
+      </div>
+    );
+  }
+  return <Lab nav={nav} />;
+}
+
+function Lab({ nav }: { nav: ReactNode }) {
   const [s, controls] = useDesk();
   return (
     <div className="mx-auto flex min-h-screen max-w-[2200px] flex-col gap-2 p-2">
+      {nav}
       <LiveMarket />
       {s.source.mode === 'sim' ? (
         <div className="rounded-lg border border-warn/30 bg-warn/5 p-3 text-sm text-warn">מעבדת סימולציה נפרדת · כל הנתונים למטה סינתטיים, כולל רווחים, חיסולים ושרשרת אופציות. זו אינה בדיקה היסטורית על Binance.</div>

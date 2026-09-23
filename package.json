@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "sim:soak": "tsx scripts/headless.ts",
     "paper": "tsx scripts/paper-live.ts",
-    "test:live": "tsx scripts/live-fixture.ts 12"
+    "test:live": "tsx scripts/live-fixture.ts 12",
+    "bot": "tsx bot/index.ts",
+    "test:bot": "tsx scripts/bot-fixture.ts"
   },
   "dependencies": {
     "react": "^19.3.0",
