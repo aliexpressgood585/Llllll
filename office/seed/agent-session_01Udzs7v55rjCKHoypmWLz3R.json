@@ -1,0 +1,1 @@
+{"project": "spacehub", "name": "פריסה ל-Vercel", "status": "needs_input", "detail": "האתר נפרס ל-Vercel, אבל מפתחות ה-API נכנסים לתוקף רק אחרי פריסה מחדש.", "model": "claude-sonnet-4-6", "updatedAt": "2026-07-10T03:55:24Z", "url": "https://claude.ai/code/session_01Udzs7v55rjCKHoypmWLz3R", "artifacts": [], "needsAction": "לבצע Redeploy ידני בדשבורד של Vercel", "costUsd": 3.11}
