@@ -60,6 +60,52 @@ function Spark({ v }: { v: number[] }) {
   );
 }
 
+function ReportPanel({ s }: { s: BotSnapshot }) {
+  const r = s.report;
+  const progress = Math.min(1, r.days / 7);
+  return (
+    <Panel
+      title="דוח תקופת הבדיקה — האם לחבר לכסף אמיתי?"
+      right={<span className={`rounded-sm px-2 py-0.5 text-[11px] font-bold ${r.passed ? 'bg-up/20 text-up' : r.days < 7 ? 'bg-warn/15 text-warn' : 'bg-down/20 text-down'}`}>{r.passed ? 'עבר' : r.days < 7 ? 'בתהליך' : 'לא עבר'}</span>}
+    >
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_1fr_1fr]">
+        <div>
+          <div className="text-[11px] text-dim">התקדמות: {r.days.toFixed(1)} מתוך 7 ימים</div>
+          <div className="my-1.5 h-2 overflow-hidden rounded-sm bg-line"><div className="h-full bg-accent" style={{ width: `${progress * 100}%` }} /></div>
+          <div className="num mt-2 text-[22px] font-semibold text-white">
+            {fmtUsd(r.capital)} <span className="text-muted">←</span> {fmtUsd(r.endEquity, 2)}
+          </div>
+          <div className={`num text-[15px] font-semibold ${tone(r.pnl)}`}>{fmtSignedUsd(r.pnl, 2)} ({fmtPct(r.pnlPct, 2, true)})</div>
+          <div className="mt-1 text-[11px] text-dim">אחרי כל העמלות ({fmtUsd(r.fees, 2)}) · שווי לפי מחיר ביד — מה שאפשר למכור בפועל</div>
+          <div className={`mt-3 text-[12px] font-semibold ${r.passed ? 'text-up' : r.days < 7 ? 'text-warn' : 'text-down'}`}>{r.verdict}</div>
+        </div>
+        <div>
+          {r.checks.map((c) => (
+            <div key={c.label} className="flex items-start justify-between gap-2 py-[3px] text-[11.5px]">
+              <span className={c.ok ? 'text-up' : 'text-muted'}>{c.ok ? '✓' : '○'} {c.label}</span>
+              <span className={`num shrink-0 ${c.ok ? 'text-text' : 'text-dim'}`}>{c.value}</span>
+            </div>
+          ))}
+        </div>
+        <div className="max-h-[190px] overflow-auto">
+          <table className="num w-full text-[11px]">
+            <thead className="text-[10px] text-muted"><tr><th className="text-start font-semibold">יום</th><th className="text-end font-semibold">שווי</th><th className="text-end font-semibold">רו״ה</th></tr></thead>
+            <tbody>
+              {r.daily.map((d) => (
+                <tr key={d.day} className="border-t border-line/60">
+                  <td className="py-[3px] text-dim">{d.day}</td>
+                  <td className="text-end">{fmtUsd(d.equity, 2)}</td>
+                  <td className={`text-end ${tone(d.pnl)}`}>{fmtSignedUsd(d.pnl, 2)} ({fmtPct(d.pct, 1, true)})</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 export function BotDashboard() {
   const { snap: s, error, control } = useBot(true);
 
@@ -110,6 +156,8 @@ npm run bot        # ואז לפתוח http://localhost:8787`}</pre>
         <Tile label="עסקאות / הצלחה" value={`${p.trades} · ${fmtPct(p.winRate, 0)}`} sub={`PF ${p.profitFactor === null ? '—' : fmtNum(p.profitFactor, 2)} · שארפ ${p.sharpe === null ? '—' : fmtNum(p.sharpe, 2)}`} />
         <Tile label="עמלות ששולמו" value={fmtUsd(p.feesPaid, 2)} sub="מסחר + מימוש" tone="text-warn" />
       </section>
+
+      <ReportPanel s={s} />
 
       <div className="grid grid-cols-1 gap-2 xl:grid-cols-3">
         <Panel title="עקומת הון (לפי ביד — מה שאפשר לממש בפועל)" className="xl:col-span-2">

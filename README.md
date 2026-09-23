@@ -30,6 +30,24 @@ npm run test:bot        # offline end-to-end test: HMAC vs Binance's example, fe
 
 Binance blocks US IP addresses; run the bot from a supported region. Keep `BOT_HOST=127.0.0.1` — the control endpoint must not be public.
 
+### Running it 24/7 for the evaluation week (next to your other bot)
+
+```sh
+# Docker (auto-restart, state + journal in ./bot-data)
+cp .env.example .env
+docker compose up -d --build            # dashboard: http://localhost:8787
+docker compose exec bot npm run report  # evaluation report at any time
+
+# or pm2 without Docker
+npm ci && npm run build && npm i -g pm2
+pm2 start ecosystem.config.cjs && pm2 save && pm2 startup
+npm run report
+```
+
+The dashboard's report panel (and `npm run report`) shows fixed capital → current equity after all fees, the daily P&L table and a
+go/no-go checklist: ≥ 7 days, ≥ 15 closed trades, net profit after fees, profit factor ≥ 1.3, max drawdown ≤ 15%, no risk halt.
+One week is a small sample — treat a pass as permission to try a very small live size, not as proof of an edge.
+
 ## Strategy lab
 
 The second tab ("מעבדת אסטרטגיות") is a research lab with these surfaces (no real orders):

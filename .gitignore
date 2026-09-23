@@ -12,3 +12,4 @@ paper-state.json
 bot-state.json
 bot-state.json.tmp
 bot-trades.csv
+bot-data/

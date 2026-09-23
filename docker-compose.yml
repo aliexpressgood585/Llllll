@@ -1,0 +1,14 @@
+# docker compose up -d --build        → dashboard at http://localhost:8787
+# docker compose exec bot npm run report   → weekly evaluation report
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./bot-data:/data
+    ports:
+      # published on localhost only — the control endpoint must never be exposed to the internet
+      - "127.0.0.1:8787:8787"

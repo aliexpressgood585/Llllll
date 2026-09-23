@@ -2,6 +2,7 @@
  * Binance options bot — entry point.  `npm run bot`
  * Paper mode (default) trades against Binance's real order books with Binance's fee and settlement rules.
  */
+import './env';
 import { BinanceLiquidationStream } from '../src/live/binanceLiquidations';
 import { BinanceClient } from './binanceClient';
 import { LiveBroker, PaperBroker, type Broker } from './broker';

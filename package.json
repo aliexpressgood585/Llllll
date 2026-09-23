@@ -13,7 +13,8 @@
     "paper": "tsx scripts/paper-live.ts",
     "test:live": "tsx scripts/live-fixture.ts 12",
     "bot": "tsx bot/index.ts",
-    "test:bot": "tsx scripts/bot-fixture.ts"
+    "test:bot": "tsx scripts/bot-fixture.ts",
+    "report": "tsx bot/report-cli.ts"
   },
   "dependencies": {
     "react": "^19.3.0",

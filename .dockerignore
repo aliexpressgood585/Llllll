@@ -1,0 +1,8 @@
+node_modules
+dist
+bot-data
+bot-state.json*
+bot-trades.csv
+.env
+.git
+rooms
