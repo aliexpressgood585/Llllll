@@ -4,7 +4,7 @@ import { STEPS_PER_HOUR } from '../src/engine/config';
 
 const days = Number(process.argv[2] ?? 5);
 const seed = Number(process.argv[3] ?? 42);
-const e = new DeskEngine(seed);
+const e = new DeskEngine({ seed });
 const t0 = performance.now();
 for (let d = 0; d < days; d++) {
   for (let i = 0; i < STEPS_PER_HOUR * 24; i++) e.step();

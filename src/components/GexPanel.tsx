@@ -26,7 +26,7 @@ export function GexPanel({ s }: { s: DeskSnapshot }) {
       <div className="mt-2 flex h-[52px] items-center gap-[1px]">
         {prof.map((p) => {
           const h = (Math.abs(p.gex) / maxAbs) * 24;
-          const atm = Math.abs(p.strike - spot) < ASSETS[asset].strikeStep / 2;
+          const atm = p.strike === prof.reduce((b, x) => (Math.abs(x.strike - spot) < Math.abs(b.strike - spot) ? x : b), prof[0]).strike;
           return (
             <div key={p.strike} className="relative flex h-full flex-1 flex-col items-center justify-center" title={`${p.strike}: ${fmtCompactUsd(p.gex)}`}>
               <div className="flex h-1/2 w-full items-end">{p.gex > 0 && <div className="w-full bg-up/80" style={{ height: h }} />}</div>

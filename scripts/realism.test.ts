@@ -22,14 +22,14 @@ test('fails closed for stale depth, invalid quantities, expiry and insufficient 
   assert.throws(() => estimateBuy({ ...instrument, filters: [] }, book, .01, now));
 });
 test('warmup ends at supplied time and seeded paths repeat', () => {
-  const a = new DeskEngine(42, now), b = new DeskEngine(42, now);
+  const a = new DeskEngine({ seed: 42, startTime: now }), b = new DeskEngine({ seed: 42, startTime: now });
   assert.equal(a.now, now);
   for (let i = 0; i < 100; i++) { a.step(); b.step(); }
   assert.equal(a.cash, b.cash);
   assert.equal(a.market.assets.BTC.spot, b.market.assets.BTC.spot);
 });
 test('bankrupt account is never automatically replenished', () => {
-  const e = new DeskEngine(42, now); e.cash = -20;
+  const e = new DeskEngine({ seed: 42, startTime: now }); e.cash = -20;
   for (let i = 0; i < 60; i++) e.step();
   assert.equal(e.cash, -20);
   assert.equal(e.attempt, 1);
@@ -37,7 +37,7 @@ test('bankrupt account is never automatically replenished', () => {
   assert.equal(e.strategies.length, 0);
 });
 test('preferred venue uses its own touch and rounding never improves fills', () => {
-  const e = new DeskEngine(42, now), ex = new SimExecution(e.market, new Rng(7));
+  const e = new DeskEngine({ seed: 42, startTime: now }), ex = new SimExecution(e.market, new Rng(7));
   const key = { asset: 'BTC' as const, expiry: now + 86400000, strike: 68000, type: 'C' as const };
   const quote = e.market.quote(key, now);
   const r = ex.execute({ ...key, qty: .01, preferVenue: 'BINANCE', liquidation: true }, now);

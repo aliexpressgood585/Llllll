@@ -24,8 +24,32 @@ export default function App() {
   return (
     <div className="mx-auto flex min-h-screen max-w-[2200px] flex-col gap-2 p-2">
       <LiveMarket />
-      <div className="rounded-lg border border-warn/30 bg-warn/5 p-3 text-sm text-warn">מעבדת סימולציה נפרדת · כל הנתונים למטה סינתטיים, כולל רווחים, חיסולים ושרשרת אופציות. זו אינה בדיקה היסטורית על Binance.</div>
+      {s.source.mode === 'sim' ? (
+        <div className="rounded-lg border border-warn/30 bg-warn/5 p-3 text-sm text-warn">מעבדת סימולציה נפרדת · כל הנתונים למטה סינתטיים, כולל רווחים, חיסולים ושרשרת אופציות. זו אינה בדיקה היסטורית על Binance.</div>
+      ) : (
+        <div className="rounded-lg border border-up/30 bg-up/5 p-3 text-sm text-up">מסחר על נייר בנתונים חיים · מחירים, תנודתיות ושרשרת האופציות למטה מגיעים מ-Deribit בזמן אמת, והחיסולים מ-Binance. העסקאות מדומות — שום פקודה לא נשלחת לבורסה.</div>
+      )}
       <BlowupBanner s={s} />
+      {controls.connecting && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-bg/85 backdrop-blur-sm">
+          <div className="rounded-[3px] border border-line bg-panel px-8 py-6 text-center">
+            <div className="pulse-dot mx-auto mb-3 h-3 w-3 rounded-full bg-accent" />
+            <div className="text-[15px] font-semibold text-white">מתחבר לנתוני שוק חיים…</div>
+            <div className="mt-1 text-[11px] text-dim">Deribit: שרשרת אופציות, מדדים, מימון ו-DVOL · Binance: זרם חיסולים</div>
+            <button onClick={() => controls.setMode('sim')} className="mt-4 rounded-[3px] border border-line2 px-3 py-1 text-[11px] text-dim hover:text-white">
+              עבור לסימולציה
+            </button>
+          </div>
+        </div>
+      )}
+      {controls.fallbackReason && (
+        <div className="flex items-center justify-between gap-3 rounded-[3px] border border-warn/40 bg-warn/10 px-3 py-2 text-[11.5px] text-warn">
+          <span>{controls.fallbackReason}</span>
+          <button onClick={() => controls.setMode('live')} className="shrink-0 rounded-[3px] border border-warn/50 px-2 py-0.5 font-semibold hover:bg-warn/20">
+            נסה שוב
+          </button>
+        </div>
+      )}
       <Header s={s} c={controls} />
 
       <main className="grid grid-cols-1 gap-2 xl:grid-cols-24">
@@ -72,8 +96,10 @@ export default function App() {
         </div>
       </section>
 
-      <footer className="num pb-1 text-center text-[9.5px] text-muted">
-        סימולציה בלבד — שוק סינתטי (דיפוזיה עם קפיצות ומעברי משטר + מפלי חיסולים בפרפטואלים), משטח Black-Scholes, מבנה עמלות Binance/Deribit, החלקה והשהיה. אין לראות בכך ייעוץ השקעות.
+      <footer className="pb-1 text-center text-[9.5px] text-muted">
+        {s.source.mode === 'live'
+          ? 'נתונים חיים מ-Deribit (אופציות, מדדים, מימון, DVOL) וזרם החיסולים הציבורי של Binance. כל העסקאות הן מסחר על נייר — שום פקודה לא נשלחת לבורסה. מפת המינוף היא הערכה. אין לראות בכך ייעוץ השקעות.'
+          : 'סימולציה בלבד — שוק סינתטי (דיפוזיה עם קפיצות ומעברי משטר + מפלי חיסולים בפרפטואלים), משטח Black-Scholes, מבנה עמלות Binance/Deribit, החלקה והשהיה. אין לראות בכך ייעוץ השקעות.'}
       </footer>
     </div>
   );

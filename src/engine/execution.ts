@@ -1,7 +1,7 @@
 import { Rng } from '../lib/rng';
-import { ASSETS } from './config';
 import { tradeFee, liquidationFee } from './fees';
-import { MarketSim, hash01 } from './market';
+import { hash01 } from './market';
+import type { MarketSource } from './marketSource';
 import type { OptionKey, Venue } from './types';
 
 export interface ExecRequest extends OptionKey {
@@ -32,14 +32,14 @@ export interface ExecutionVenue {
 
 /** Simulated smart order router across Binance Options + Deribit with realistic microstructure. */
 export class SimExecution implements ExecutionVenue {
-  constructor(private market: MarketSim, private rng: Rng) {}
+  constructor(private market: MarketSource, private rng: Rng) {}
 
   execute(req: ExecRequest, now: number): ExecResult {
-    const c = ASSETS[req.asset];
+    const c = this.market.spec(req.asset);
     const q = this.market.quote(req, now);
     if (!Number.isFinite(req.qty) || req.qty === 0 || req.expiry <= now ||
         Math.abs(req.qty / c.minQty - Math.round(req.qty / c.minQty)) > 1e-7) {
-      return { ok: false, reason: 'INVALID_ORDER', price: 0, touch: 0, venue: req.preferVenue ?? 'BINANCE', fee: 0, slippageBp: 0, latencyMs: 0 };
+      return { ok: false, reason: 'INVALID_ORDER', price: 0, touch: 0, venue: req.preferVenue ?? c.venues[0], fee: 0, slippageBp: 0, latencyMs: 0 };
     }
     const buy = req.qty > 0;
     const size = Math.abs(req.qty);
@@ -47,9 +47,9 @@ export class SimExecution implements ExecutionVenue {
 
     // A closing leg must use its original venue and that venue's own quote.
     const venues = req.preferVenue ? c.venues.filter(v => v === req.preferVenue) : c.venues;
-    if (!venues.length) return { ok: false, reason: 'UNSUPPORTED_VENUE', price: 0, touch: 0, venue: req.preferVenue ?? 'BINANCE', fee: 0, slippageBp: 0, latencyMs: 0 };
+    if (!venues.length) return { ok: false, reason: 'UNSUPPORTED_VENUE', price: 0, touch: 0, venue: req.preferVenue ?? c.venues[0], fee: 0, slippageBp: 0, latencyMs: 0 };
     const touches = venues.map(venue => {
-      const offset = venue === 'BINANCE' ? 1 : 1 + 0.006 * (hash01(`${q.symbol}${venue}${Math.floor(now / 120e3)}`) - 0.5);
+      const offset = venue === c.venues[0] ? 1 : 1 + 0.006 * (hash01(`${q.symbol}${venue}${Math.floor(now / 120e3)}`) - 0.5);
       const touch = (buy ? q.ask : q.bid) * offset;
       return { venue, touch, cost: (buy ? touch : -touch) + tradeFee(venue, this.market.assets[req.asset].spot, 1, touch) };
     }).sort((a, b) => a.cost - b.cost);
@@ -60,6 +60,7 @@ export class SimExecution implements ExecutionVenue {
     if (!req.liquidation) {
       const rejectP = stressed ? 0.035 : 0.01;
       if (this.rng.chance(rejectP)) return { ok: false, reason: 'VENUE_REJECT', price: 0, touch, venue, fee: 0, slippageBp: 0, latencyMs };
+      if (buy && q.ask <= 0) return { ok: false, reason: 'NO_ASK', price: 0, touch, venue, fee: 0, slippageBp: 0, latencyMs };
       if (!buy && q.bid <= 0) return { ok: false, reason: 'NO_BID', price: 0, touch, venue, fee: 0, slippageBp: 0, latencyMs };
     }
 

@@ -5,6 +5,7 @@ import { ASSETS, ASSET_LIST, RISK, RISK_FREE, SIM_MINUTES_PER_STEP, START_CAPITA
 import { ExecutionVenue, SimExecution } from './execution';
 import { exerciseFee } from './fees';
 import { MarketSim, instrumentSymbol, shortSymbol, surfaceIv, theoPrice } from './market';
+import type { MarketSource } from './marketSource';
 import { RegimeEngine, argmaxRegime } from './regime';
 import { StrategyPlan, buildPlan, candidates } from './strategies';
 import { MS, dteLabel, yearsTo } from './time';
@@ -105,8 +106,48 @@ export interface SurfaceView {
   iv: number[][]; // [dayIdx][moneyIdx]
 }
 
+/** Serializable paper-trading book (live mode persistence). */
+export interface PaperState {
+  v: 1;
+  savedAt: number;
+  cash: number;
+  attempt: number;
+  blowups: number;
+  strategies: Strategy[];
+  fills: Fill[];
+  alerts: Alert[];
+  equity: EquityPoint[];
+  liqMarks: { t: number; equity: number }[];
+  accountLiqs: AccountLiqEvent[];
+  attemptsLog: { attempt: number; peak: number; hours: number; cause: string }[];
+  execStats: ExecStats;
+  peak: number;
+  maxDD: number;
+  maxDDUsd: number;
+  dayStartEquity: number;
+  dayHighEquity: number;
+  hourlyRets: number[];
+  lastHourEquity: number;
+  circuitUntil: number;
+  attemptStart: number;
+  stats: { trades: number; wins: number; losses: number; realized: number; fees: number; liqCount: number };
+  kindStats: Partial<Record<StrategyKind, { n: number; pnl: number; wins: number }>>;
+  alertSeq: number;
+  blowupCountdown: number;
+}
+
+export interface DataSourceStatus {
+  mode: 'sim' | 'live';
+  state: 'sim' | 'connecting' | 'live' | 'stale' | 'error';
+  detail: string;
+  lastUpdate: number;
+  latencyMs: number;
+  liqStream: boolean;
+}
+
 export interface DeskSnapshot {
   now: number;
+  source: DataSourceStatus;
   stepN: number;
   attempt: number;
   blowups: number;
@@ -170,13 +211,15 @@ export interface DeskSnapshot {
 
 const REGIME_HE: Record<Regime, string> = { BULL: 'שורי', NEUTRAL: 'ניטרלי', BEAR: 'דובי', EXTREME: 'קיצוני' };
 
-let uid = 0;
+let uid = Math.floor(Math.random() * 1e9);
 const nextId = (p: string) => `${p}${(++uid).toString(36)}`;
 
 export class DeskEngine {
   now: number;
   stepN = 0;
-  market: MarketSim;
+  market: MarketSource;
+  readonly mode: 'sim' | 'live';
+  private lastStepAt: number;
   regimeEngine = new RegimeEngine();
   private rng: Rng;
   private riskRng: Rng;
@@ -212,23 +255,96 @@ export class DeskEngine {
   private lastMarginAlert = 0;
   private lastPreTradeAlert = 0;
 
-  constructor(seed = Date.now() & 0xffffffff, startTime = Date.now()) {
+  /** sim: synthetic market advanced in sim time. live: pass a LiveMarket — clock is wall time, fills are paper trades on live quotes. */
+  constructor(opts: { seed?: number; market?: MarketSource; startTime?: number } = {}) {
+    const seed = opts.seed ?? Date.now() & 0xffffffff;
+    const startTime = opts.startTime ?? Date.now();
     this.rng = new Rng(seed);
     this.riskRng = new Rng(seed ^ 0x9e3779b9);
-    this.now = Math.floor(startTime / 60e3) * 60e3 - 6 * 60 * 60e3;
-    this.attemptStart = this.now;
-    this.market = new MarketSim(this.rng, this.now);
+    this.mode = opts.market?.kind === 'live' ? 'live' : 'sim';
+    // sim starts 6h back so the warm-up below ends at the requested start time
+    this.now = this.mode === 'live' ? Date.now() : Math.floor(startTime / 60e3) * 60e3 - 6 * 60 * 60e3;
+    this.market = opts.market ?? new MarketSim(this.rng, this.now);
     this.exec = new SimExecution(this.market, this.rng);
-    // warm up market + regime engine for a few sim hours so panels are populated on load
-    for (let i = 0; i < STEPS_PER_HOUR * 6; i++) {
-      this.now += SIM_MINUTES_PER_STEP * 60e3;
-      this.market.step(this.now);
-      this.regimeEngine.update(this.market);
+    if (this.mode === 'sim') {
+      // warm up market + regime engine for a few sim hours so panels are populated on load
+      for (let i = 0; i < STEPS_PER_HOUR * 6; i++) {
+        this.now += SIM_MINUTES_PER_STEP * 60e3;
+        this.market.step(this.now);
+        this.regimeEngine.update(this.market);
+      }
+      this.market.liqEvents = [];
+    } else {
+      // live: prime the regime model on the backfilled price history
+      for (let i = 0; i < 90; i++) this.regimeEngine.update(this.market);
     }
-    this.market.liqEvents = [];
+    this.lastStepAt = this.now;
     this.attemptStart = this.now;
     this.equity.push({ t: this.now, equity: START_CAPITAL, dd: 0 });
-    this.alert(`סימולציה סינתטית — הון ${fmtUsd(START_CAPITAL)} · סיכון מוגבל · ניצול בטחונות מקסימלי ${(RISK.maxMarginUtil * 100).toFixed(0)}%`, 'LOW');
+    this.alert(`${this.mode === "live" ? "מסחר על נייר בנתונים חיים" : "סימולציה סינתטית"} — הון ${fmtUsd(START_CAPITAL)} · סיכון מוגבל · ניצול בטחונות מקסימלי ${(RISK.maxMarginUtil * 100).toFixed(0)}%`, 'LOW');
+  }
+
+  exportState(): PaperState {
+    return {
+      v: 1,
+      savedAt: Date.now(),
+      cash: this.cash,
+      attempt: this.attempt,
+      blowups: this.blowups,
+      strategies: this.strategies,
+      fills: this.fills,
+      alerts: this.alerts,
+      equity: this.equity.length > 1500 ? this.equity.filter((_, i) => i % 2 === 0 || i > this.equity.length - 300) : this.equity,
+      liqMarks: this.liqMarks,
+      accountLiqs: this.accountLiqs,
+      attemptsLog: this.attemptsLog,
+      execStats: this.execStats,
+      peak: this.peak,
+      maxDD: this.maxDD,
+      maxDDUsd: this.maxDDUsd,
+      dayStartEquity: this.dayStartEquity,
+      dayHighEquity: this.dayHighEquity,
+      hourlyRets: this.hourlyRets,
+      lastHourEquity: this.lastHourEquity,
+      circuitUntil: this.circuitUntil,
+      attemptStart: this.attemptStart,
+      stats: this.stats,
+      kindStats: this.kindStats,
+      alertSeq: this.alertSeq,
+      blowupCountdown: this.blowupCountdown,
+    };
+  }
+
+  /** Restore a saved paper book. Legs whose instrument has since expired are settled on the next step. */
+  importState(s: PaperState): void {
+    if (s?.v !== 1) return;
+    Object.assign(this, {
+      cash: s.cash,
+      attempt: s.attempt,
+      blowups: s.blowups,
+      strategies: s.strategies,
+      fills: s.fills,
+      alerts: s.alerts,
+      equity: s.equity,
+      liqMarks: s.liqMarks,
+      accountLiqs: s.accountLiqs,
+      attemptsLog: s.attemptsLog,
+      execStats: s.execStats,
+      peak: s.peak,
+      maxDD: s.maxDD,
+      maxDDUsd: s.maxDDUsd,
+      dayStartEquity: s.dayStartEquity,
+      dayHighEquity: s.dayHighEquity,
+      hourlyRets: s.hourlyRets,
+      lastHourEquity: s.lastHourEquity,
+      circuitUntil: s.circuitUntil,
+      attemptStart: s.attemptStart,
+      stats: s.stats,
+      kindStats: s.kindStats,
+      alertSeq: s.alertSeq,
+      blowupCountdown: s.blowupCountdown,
+    });
+    this.alert(`ספר המסחר על נייר שוחזר — ${s.strategies.length} אסטרטגיות פתוחות, נשמר ${new Date(s.savedAt).toISOString().slice(0, 16).replace('T', ' ')} UTC`, 'LOW');
   }
 
   // ------------------------------------------------------------------ helpers
@@ -336,7 +452,7 @@ export class DeskEngine {
   }
 
   private openPlan(plan: StrategyPlan, units: number, riskCapital: number, entryRegime: Regime) {
-    const c = ASSETS[plan.asset];
+    const c = this.market.spec(plan.asset);
     const st: Strategy = {
       id: nextId('S'),
       kind: plan.kind,
@@ -516,7 +632,7 @@ export class DeskEngine {
     if (!best) return;
     this.lastEntryStep = this.stepN;
     const { plan } = best;
-    const c = ASSETS[plan.asset];
+    const c = this.market.spec(plan.asset);
 
     // per-unit sizing from executable prices and risk-based margin
     const probe: Strategy = {
@@ -547,8 +663,9 @@ export class DeskEngine {
 
   // ------------------------------------------------------------------ main loop
   step(): void {
-    const prev = this.now;
-    this.now += SIM_MINUTES_PER_STEP * 60e3;
+    const prev = this.lastStepAt;
+    this.now = this.mode === 'live' ? Date.now() : this.now + SIM_MINUTES_PER_STEP * 60e3;
+    this.lastStepAt = this.now;
     this.stepN++;
     const { events } = this.market.step(this.now);
     for (const ev of events) {
@@ -627,6 +744,7 @@ export class DeskEngine {
 
   // ------------------------------------------------------------------ snapshot for UI
   snapshot(): DeskSnapshot {
+    if (this.mode === 'live') this.now = Date.now();
     const now = this.now;
     const s = this.surfaces();
     const { im, mm } = this.refreshMargins(s);
@@ -744,7 +862,7 @@ export class DeskEngine {
         tag: st.tag,
         legs: st.legs.length,
         units: st.units,
-        size: st.units * ASSETS[st.asset].minQty,
+        size: st.units * this.market.spec(st.asset).minQty,
         pnl,
         pnlPct: st.riskCapital > 0 ? pnl / st.riskCapital : 0,
         dayPnl: pnl - st.dayPnlAnchor,
@@ -825,6 +943,7 @@ export class DeskEngine {
 
     return {
       now,
+      source: this.market.status?.() ?? { mode: 'sim', state: 'sim', detail: 'שוק סינתטי', lastUpdate: now, latencyMs: 0, liqStream: false },
       stepN: this.stepN,
       attempt: this.attempt,
       blowups: this.blowups,
