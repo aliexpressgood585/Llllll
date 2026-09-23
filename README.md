@@ -1,6 +1,38 @@
 # Nexus Quant Options Desk
 
-Hebrew (RTL) React + TypeScript + Tailwind v4 + Vite options desk. **No real orders are ever sent.** Three clearly separated surfaces:
+Hebrew (RTL) React + TypeScript + Tailwind v4 + Vite options desk.
+
+## Binance options bot (`npm run bot`) — the main product
+
+A 24/7 Node service that trades Binance European Options with a **fixed portfolio** (default 2,500 USDT, never topped up) and serves
+the dashboard at http://localhost:8787 (tab "בוט Binance").
+
+- **Real Binance data:** contracts, lot/tick sizes and per-contract fee rates from `/eapi/v1/exchangeInfo`, bid/ask from `/ticker`,
+  Binance's own mark price, IV and Greeks from `/mark`, index from `/index`, 1m spot klines for realised vol / momentum,
+  the USDⓈ-M liquidation stream, and **official settlement prices** from `/exerciseHistory`.
+- **Execution like a real account:** every order is an IOC limit (best price ± 3%). Paper mode fetches the live order book and walks
+  its levels (partial fills, lot step, tick rounding); live mode sends the same order to `POST /eapi/v1/order`.
+- **Binance's rules:** buy-only (a regular Binance account cannot write options), fee = min(rate × index × unit, 10% × price) × size,
+  exercise fee at settlement; positions held to expiry settle at Binance's published settlement price.
+- **Strategies:** long straddle when realised vol runs above Binance's ATM IV (or on liquidation bursts); long 0.35-delta call/put on
+  confirmed multi-horizon momentum. Exits: take-profit, stop-loss, trailing stop, time stop, close before expiry.
+- **Risk:** max premium per trade and open, max positions, daily loss stop, max-drawdown halt (manual resume), spread/liquidity filters.
+- **Operations:** state saved atomically every cycle (restart-safe), every fill appended to `bot-trades.csv`, API weight tracked with back-off on 429/418.
+- **Live trading** requires `BOT_MODE=live`, API keys with Options permission, and `LIVE_CONFIRM=I_ACCEPT_REAL_MONEY_RISK`; it checks the
+  options wallet holds at least `BOT_CAPITAL`. Not yet exercised against the real exchange — start with a very small `BOT_CAPITAL`.
+
+```sh
+cp .env.example .env    # adjust, then export the variables (or set them in your process manager)
+npm ci && npm run build
+npm run bot             # dashboard + API: http://localhost:8787
+npm run test:bot        # offline end-to-end test: HMAC vs Binance's example, fees vs Binance's FAQ, book walk, settlement, cash reconciliation
+```
+
+Binance blocks US IP addresses; run the bot from a supported region. Keep `BOT_HOST=127.0.0.1` — the control endpoint must not be public.
+
+## Strategy lab
+
+The second tab ("מעבדת אסטרטגיות") is a research lab with these surfaces (no real orders):
 
 - **Live paper trading (default, `#live`)** — the strategy engine runs in wall-clock time on real public market data and fills on paper against real bid/ask:
   - Deribit public WebSocket JSON-RPC (no keys): option chains for BTC, ETH, SOL_USDC (bid/ask/mark/IV/OI/volume), index prices,
