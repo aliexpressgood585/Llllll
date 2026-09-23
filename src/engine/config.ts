@@ -102,15 +102,16 @@ export const RISK = {
   maxStrategies: 7,
   maxPerAsset: 3,
   /** max initial margin (or debit) committed to one new strategy as fraction of equity */
-  perTradeBudget: 0.45,
+  perTradeBudget: 0.10,
   /** cap on total IM / equity when opening new risk */
-  maxMarginUtil: 0.98,
+  maxMarginUtil: 0.60,
   /** maintenance margin as fraction of initial margin */
   mmRatio: 0.85,
   /** circuit breaker: intraday drawdown fraction from day-high equity */
-  circuitDd: 0.45,
+  circuitDd: 0.05,
   circuitHours: 3,
   entryCooldownSteps: 6,
   blowupThreshold: 0.1,
-  resetAfterSteps: 45,
+
 };
+
