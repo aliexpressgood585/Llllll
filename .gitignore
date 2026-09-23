@@ -3,3 +3,8 @@
 !.env.example
 __pycache__/
 *.pyc
+node_modules/
+dist/
+.vercel/
+*.log
+.DS_Store
