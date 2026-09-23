@@ -142,3 +142,9 @@ h1, h2, h3 { text-wrap: balance; }
 
 /* every screen root is a single column that may never grow wider than the viewport */
 main > .fade-in > .grid { grid-template-columns: minmax(0, 1fr); }
+.house-scene.tall { min-width: 0; }
+.house-wrap:fullscreen .house-scene.tall { width: min(100vw, calc(100vh * 450 / 566)); }
+.hb { width: max-content; }
+.house-scene.tall .htag { font-size: calc(8.5px / var(--z, 1)); padding: 0.1em 0.4em 0.06em; }
+.house-scene.tall .hb { max-width: calc(min(210px, 58cqw) / var(--z, 1)); font-size: calc(10.5px / var(--z, 1)); }
+.house-scene.tall .hsign { font-size: calc(9px / var(--z, 1)); }

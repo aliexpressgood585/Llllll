@@ -33,7 +33,18 @@ interface Person {
   st: Station | null; free: { room: RoomKey; x: number; act: string } | null; timer: number; pose: Pose; roll: boolean; stretch: number;
 }
 
-const W = 640, H = 400, R = 2, PS = 1.5;
+const W = 640, H = 400, R = 2;
+
+/** A slice of the world (sx..) copied to the visible canvas at (dx, dy). Phones stack the rooms into a tower. */
+interface Slice { sx: number; sy: number; sw: number; sh: number; dx: number; dy: number }
+const WIDE: Slice[] = [{ sx: 0, sy: 0, sw: W, sh: H, dx: 0, dy: 0 }];
+const TALL: Slice[] = [
+  { sx: 95, sy: 0, sw: 450, sh: 92, dx: 0, dy: 0 }, // roof + attic
+  { sx: 22, sy: 88, sw: 378, sh: 138, dx: 36, dy: 96 }, // work room
+  { sx: 394, sy: 88, sw: 224, sh: 138, dx: 36, dy: 240 }, // meeting room
+  { sx: 468, sy: 226, sw: 148, sh: 148, dx: 266, dy: 240 }, // repair room
+  { sx: 22, sy: 226, sw: 450, sh: 174, dx: 0, dy: 392 }, // entry, stairs, living + garden
+];
 const FLOOR_Y: Record<Floor, number> = { attic: 84, up: 220, down: 366 };
 export const ROOMS: Record<RoomKey, { he: string; floor: Floor; x0: number; x1: number; y0: number; y1: number }> = {
   work: { he: 'חדר העבודה', floor: 'up', x0: 30, x1: 390, y0: 94, y1: 222 },
@@ -143,6 +154,12 @@ export interface EngineOpts {
 
 export class HouseEngine {
   private ctx: CanvasRenderingContext2D;
+  private out: CanvasRenderingContext2D;
+  private world = document.createElement('canvas');
+  private slices = WIDE;
+  private view = { w: W, h: H };
+  private ps = 1.5;
+  tall = false;
   private bg = document.createElement('canvas');
   private b: CanvasRenderingContext2D;
   private st = stations();
@@ -174,7 +191,9 @@ export class HouseEngine {
 
   constructor(private o: EngineOpts) {
     o.canvas.width = W * R; o.canvas.height = H * R;
-    this.ctx = o.canvas.getContext('2d')!;
+    this.out = o.canvas.getContext('2d')!;
+    this.world.width = W * R; this.world.height = H * R;
+    this.ctx = this.world.getContext('2d')!;
     this.bg.width = W * R; this.bg.height = H * R;
     this.b = this.bg.getContext('2d')!;
     this.b.setTransform(R, 0, 0, R, 0, 0);
@@ -217,16 +236,43 @@ export class HouseEngine {
     this.buildTags();
   }
 
+  /** Phones: stack the rooms into a tower that fits the screen width, with bigger residents. */
+  setLayout(tall: boolean) {
+    if (tall === this.tall && this.o.canvas.width === this.view.w * R) return;
+    this.tall = tall;
+    this.slices = tall ? TALL : WIDE;
+    this.ps = tall ? 2 : 1.5;
+    this.view = tall ? { w: 450, h: 566 } : { w: W, h: H };
+    this.o.canvas.width = this.view.w * R; this.o.canvas.height = this.view.h * R;
+    this.o.canvas.style.aspectRatio = `${this.view.w} / ${this.view.h}`;
+    this.o.scene.classList.toggle('tall', tall);
+    for (const e of this.o.overlay.querySelectorAll('.hsign')) e.remove();
+    this.roomSigns();
+    this.buildTags();
+    this.cam = { s: 1, cx: this.view.w / 2, cy: this.view.h / 2 };
+    this.fit();
+  }
+  /** World point → visible-canvas point (through the slice that holds it, or the nearest one). */
+  private toView(x: number, y: number) {
+    let best = this.slices[0], bd = Infinity;
+    for (const s of this.slices) {
+      const cx = Math.min(s.sx + s.sw, Math.max(s.sx, x)), cy = Math.min(s.sy + s.sh, Math.max(s.sy, y));
+      const d = Math.hypot(cx - x, cy - y);
+      if (d < bd) { bd = d; best = s; if (d === 0) break; }
+    }
+    return { x: Math.min(best.sx + best.sw, Math.max(best.sx, x)) - best.sx + best.dx, y: Math.min(best.sy + best.sh, Math.max(best.sy, y)) - best.sy + best.dy };
+  }
+
   setMode(m: Mode) { this.mode = m; for (const p of this.people.values()) { p.timer = Math.min(p.timer, rnd(0, 1.5)); } }
   setLabels(l: Labels) { this.labels = l; this.buildTags(); }
   setHighlight(project: string) { this.highlight = project; this.buildTags(); }
   select(id: string | null, focus = true) {
     this.selected = id; this.buildTags();
     const p = id ? this.people.get(id) : null;
-    if (p && focus) { const s = Math.max(this.camT.s, 2.2); this.camT = { s, cx: p.x, cy: p.y - 30 }; }
+    if (p && focus) { const v = this.toView(p.x, p.y); const s = Math.max(this.camT.s, this.tall ? 1.8 : 2.2); this.camT = { s, cx: v.x, cy: v.y - 30 }; }
   }
   zoom(f: number) { this.camT = { ...this.camT, s: Math.min(4, Math.max(1, this.camT.s * f)) }; }
-  fit() { this.camT = { s: 1, cx: W / 2, cy: H / 2 }; this.follow = false; }
+  fit() { this.camT = { s: 1, cx: this.view.w / 2, cy: this.view.h / 2 }; this.follow = false; }
   activity(id: string): Activity | null {
     const p = this.people.get(id); if (!p) return null;
     const room = p.st?.room ?? p.free?.room ?? HOME_ROOM[p.r.status];
@@ -457,7 +503,7 @@ export class HouseEngine {
     const ctx = this.ctx;
     const x = Math.round(p.x), y = Math.round(p.y), f = p.face;
     // scale the sprite PS× around its feet so residents read clearly against the furniture
-    ctx.setTransform(R * PS, 0, 0, R * PS, -x * R * (PS - 1), -y * R * (PS - 1));
+    ctx.setTransform(R * this.ps, 0, 0, R * this.ps, -x * R * (this.ps - 1), -y * R * (this.ps - 1));
     ctx.globalAlpha = this.highlight && p.r.project !== this.highlight ? 0.28 : 1;
     const P = (dx: number, dy: number, w: number, h: number, c: string) => px(ctx, f > 0 ? x + dx : x - dx - w, y + dy, w, h, c);
     const pose = p.pose, reduced = this.reduced, tick = reduced ? 0 : t;
@@ -564,6 +610,14 @@ export class HouseEngine {
     this.drawCat(this.t);
     for (const q of this.particles) px(ctx, q.x, q.y, 2, 2, q.c);
     this.lighting();
+    const out = this.out;
+    out.setTransform(1, 0, 0, 1, 0, 0);
+    out.imageSmoothingEnabled = false;
+    if (!this.tall) out.drawImage(this.world, 0, 0);
+    else {
+      out.fillStyle = '#2a2118'; out.fillRect(0, 0, this.o.canvas.width, this.o.canvas.height);
+      for (const s of this.slices) out.drawImage(this.world, s.sx * R, s.sy * R, s.sw * R, s.sh * R, s.dx * R, s.dy * R, s.sw * R, s.sh * R);
+    }
     this.stepCamera(dt);
     this.positionOverlay();
     this.raf = requestAnimationFrame(this.frame);
@@ -571,13 +625,14 @@ export class HouseEngine {
 
   /* ------------------------------------------------------------------ camera */
   private stepCamera(dt: number) {
-    if (this.follow && this.selected) { const p = this.people.get(this.selected); if (p) this.camT = { ...this.camT, cx: p.x, cy: p.y - 30 }; }
+    if (this.follow && this.selected) { const p = this.people.get(this.selected); if (p) { const v = this.toView(p.x, p.y); this.camT = { ...this.camT, cx: v.x, cy: v.y - 30 }; } }
     const k = this.reduced || this.drag ? 1 : 1 - Math.exp(-dt * 5);
     const c = this.cam, T = this.camT;
     c.s += (T.s - c.s) * k; c.cx += (T.cx - c.cx) * k; c.cy += (T.cy - c.cy) * k;
-    let tx = W / 2 - c.cx * c.s, ty = H / 2 - c.cy * c.s;
-    tx = Math.min(0, Math.max(W - W * c.s, tx)); ty = Math.min(0, Math.max(H - H * c.s, ty));
-    this.o.cam.style.transform = `translate(${(tx / W) * 100}%, ${(ty / H) * 100}%) scale(${c.s})`;
+    const VW = this.view.w, VH = this.view.h;
+    let tx = VW / 2 - c.cx * c.s, ty = VH / 2 - c.cy * c.s;
+    tx = Math.min(0, Math.max(VW - VW * c.s, tx)); ty = Math.min(0, Math.max(VH - VH * c.s, ty));
+    this.o.cam.style.transform = `translate(${(tx / VW) * 100}%, ${(ty / VH) * 100}%) scale(${c.s})`;
     this.o.cam.style.setProperty('--z', c.s.toFixed(3));
   }
 
@@ -591,19 +646,19 @@ export class HouseEngine {
     if (!d.moved && Math.hypot(dx, dy) < 6) return;
     if (this.cam.s <= 1.01) return; // nothing to pan at full view
     d.moved = true; this.follow = false;
-    const scale = W / this.o.scene.clientWidth / this.cam.s;
+    const scale = this.view.w / this.o.scene.clientWidth / this.cam.s;
     this.camT = { ...this.camT, cx: d.cx - dx * scale, cy: d.cy - dy * scale };
   };
   private onUp = () => { if (this.drag?.moved) this.suppressClick = true; this.drag = null; };
   private worldPoint(e: MouseEvent) {
     const r = this.o.canvas.getBoundingClientRect();
-    return { mx: ((e.clientX - r.left) / r.width) * W, my: ((e.clientY - r.top) / r.height) * H };
+    return { mx: ((e.clientX - r.left) / r.width) * this.view.w, my: ((e.clientY - r.top) / r.height) * this.view.h };
   }
   private onClick = (e: MouseEvent) => {
     if (this.suppressClick) { this.suppressClick = false; return; }
     const { mx, my } = this.worldPoint(e);
     let best: Person | null = null, bd = 20;
-    for (const p of this.people.values()) { const d = Math.hypot(p.x - mx, p.y - 16 - my); if (d < bd) { bd = d; best = p; } }
+    for (const p of this.people.values()) { const v = this.toView(p.x, p.y); const d = Math.hypot(v.x - mx, v.y - 11 * this.ps - my); if (d < bd) { bd = d; best = p; } }
     if (best) { this.select(best.id, false); this.o.onSelect(best.id); }
   };
   private onDbl = (e: MouseEvent) => {
@@ -629,7 +684,7 @@ export class HouseEngine {
   /* ------------------------------------------------------------------ overlay */
   private roomSigns() {
     const signs: [RoomKey, number, number][] = [['work', 210, 96], ['meet', 504, 96], ['entry', 98, 232], ['living', 342, 232], ['repair', 542, 232], ['attic', 320, 32]];
-    for (const [k, x, y] of signs) { const s = el('div', 'hsign', ROOMS[k].he); s.style.right = `${100 - (x / W) * 100}%`; s.style.top = `${(y / H) * 100}%`; this.o.overlay.append(s); }
+    for (const [k, x, y] of signs) { const v = this.toView(x, y); const s = el('div', 'hsign', ROOMS[k].he); s.style.right = `${100 - (v.x / this.view.w) * 100}%`; s.style.top = `${(v.y / this.view.h) * 100}%`; this.o.overlay.prepend(s); }
   }
   private tagVisible(p: Person) {
     if (this.highlight && p.r.project !== this.highlight) return false;
@@ -648,48 +703,57 @@ export class HouseEngine {
         tg.addEventListener('click', () => { this.select(id, false); this.o.onSelect(id); });
         this.o.overlay.append(tg); this.tags.set(p.id, tg);
       }
-      tg.textContent = p.r.label;
+      tg.textContent = this.tall && p.r.label.length > 13 ? `${p.r.label.slice(0, 12)}…` : p.r.label;
       tg.style.setProperty('--c', COLORS[p.r.status]);
       tg.setAttribute('aria-label', `${p.r.full} · ${p.r.projectName} — ${he[p.r.status]}`);
       tg.classList.toggle('sel', this.selected === p.id);
       tg.hidden = !this.tagVisible(p);
     }
   }
-  private headOffset(p: Person) { return p.pose === 'sleep' ? 36 : p.r.status === 'needs_input' || p.r.status === 'failed' ? 58 : 38; }
+  private headOffset(p: Person) { return (p.pose === 'sleep' ? 36 : p.r.status === 'needs_input' || p.r.status === 'failed' ? 58 : 38) * (this.ps / 1.5); }
   private positionOverlay() {
     const cw = Math.max(1, this.o.canvas.clientWidth);
+    const VW = this.view.w, VH = this.view.h;
+    const pos = new Map<string, { x: number; y: number }>();
+    for (const p of this.people.values()) pos.set(p.id, this.toView(p.x, p.y));
     const byRow: Record<number, Person[]> = {};
-    for (const p of this.people.values()) { const tg = this.tags.get(p.id); if (tg && !tg.hidden) (byRow[Math.round(p.y / 40)] ??= []).push(p); }
+    for (const p of this.people.values()) { const tg = this.tags.get(p.id); if (tg && !tg.hidden) (byRow[Math.round(pos.get(p.id)!.y / 40)] ??= []).push(p); }
     const levels = new Map<string, number>();
     for (const list of Object.values(byRow)) {
-      list.sort((a, c) => a.x - c.x);
+      list.sort((a, c) => pos.get(a.id)!.x - pos.get(c.id)!.x);
       const lastX: number[] = [];
       for (const p of list) {
         const tg = this.tags.get(p.id)!;
-        const w = (tg.offsetWidth / cw) * W + 2;
-        let lv = 0; while (lastX[lv] !== undefined && p.x - w < lastX[lv]) lv++;
-        lastX[lv] = p.x; levels.set(p.id, lv);
+        const x = pos.get(p.id)!.x;
+        const w = (tg.offsetWidth / cw) * VW + 2;
+        let lv = 0; while (lastX[lv] !== undefined && x - w < lastX[lv]) lv++;
+        lastX[lv] = x; levels.set(p.id, lv);
       }
     }
-    const lineH = (tg?: HTMLElement) => (tg ? (tg.offsetHeight / cw) * W : 10) + 1;
+    const lineH = (tg?: HTMLElement) => (tg ? (tg.offsetHeight / cw) * VW : 10) + 1;
     for (const p of this.people.values()) {
       const tg = this.tags.get(p.id); if (!tg || tg.hidden) continue;
+      const v = pos.get(p.id)!;
       const lv = levels.get(p.id) || 0;
-      const half = (tg.offsetWidth / cw) * W / 2 + 1; // keep the tag inside the house edges
-      const tx = Math.min(W - half, Math.max(half, p.x));
-      tg.style.right = `${100 - (tx / W) * 100}%`;
-      tg.style.top = `${Math.max(0, ((p.y - this.headOffset(p) - lv * lineH(tg)) / H) * 100)}%`;
+      const half = (tg.offsetWidth / cw) * VW / 2 + 1; // keep the tag inside the house edges
+      const tx = Math.min(VW - half, Math.max(half, v.x));
+      tg.style.right = `${100 - (tx / VW) * 100}%`;
+      tg.style.top = `${Math.max(0, ((v.y - this.headOffset(p) - lv * lineH(tg)) / VH) * 100)}%`;
       tg.style.zIndex = String(30 - lv);
+      // phones: at most two stacked tags per spot; the rest stay reachable by tapping the resident
+      tg.style.visibility = this.tall && lv >= 2 && p.id !== this.selected && p.r.status !== 'needs_input' && p.r.status !== 'failed' ? 'hidden' : '';
     }
     for (const [id, bb] of this.bubbles) {
       const p = this.people.get(id); if (!p) continue;
+      const v = pos.get(id)!;
       const tg = this.tags.get(id);
       const lv = levels.get(id) ?? 0;
       const off = this.headOffset(p) + (tg && !tg.hidden ? (lv + 1) * lineH(tg) : 0) + 3;
-      bb.el.style.right = `${100 - (p.x / W) * 100}%`;
-      bb.el.style.top = `${Math.max(0, ((p.y - off) / H) * 100)}%`;
+      const half = (bb.el.offsetWidth / cw) * VW / 2 + 1;
+      bb.el.style.right = `${100 - (Math.min(VW - half, Math.max(half, v.x)) / VW) * 100}%`;
+      bb.el.style.top = `${Math.max(0, ((v.y - off) / VH) * 100)}%`;
     }
-    for (const fl of this.floats) { const p = this.people.get(fl.id); if (p) { fl.el.style.right = `${100 - (p.x / W) * 100}%`; fl.el.style.top = `${((p.y - this.headOffset(p) - 18) / H) * 100}%`; } }
+    for (const fl of this.floats) { const p = this.people.get(fl.id); if (p) { const v = pos.get(p.id)!; fl.el.style.right = `${100 - (v.x / VW) * 100}%`; fl.el.style.top = `${((v.y - this.headOffset(p) - 18) / VH) * 100}%`; } }
   }
   private spawnFloat(p: Person, text: string, color: string) {
     const e = el('div', 'hfloat', text); e.style.color = color; this.o.overlay.append(e);
