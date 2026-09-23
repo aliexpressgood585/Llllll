@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>חדר המסחר — פיוצ'רס</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0c0f15; --surface: #141923; --surface-2: #1a2130; --line: #262e3f; --ink: #ecebe6; --ink-2: #b5b3ab; --muted: #7f8494;
+    --up: #3ddc84; --down: #ff6b6b; --warn: #f5c451; --info: #6fb0ff; --accent: #f0b44c;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) { color-scheme: light; --bg: #f4f3ef; --surface: #fff; --surface-2: #f0eee8; --line: #e1ddd2; --ink: #1b1a17; --ink-2: #4f4c44; --muted: #7c786d; --up: #148a50; --down: #c23a3a; --warn: #a86400; --info: #1f6fcc; --accent: #b87a12; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Heebo', system-ui, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1480px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  .num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--line); white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 25%, transparent); }
+  .dot.bad { background: var(--down); }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { font-family: inherit; }
+  .btn { height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn:hover { background: var(--surface-2); }
+  .btn.danger { color: var(--down); }
+  .btn:focus-visible, .agentrow:focus-visible, .tag:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .kpi .k { color: var(--muted); font-size: 12.5px; }
+  .kpi .v { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .kpi .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  .main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  @media (max-width: 1050px) { .main { grid-template-columns: minmax(0, 1fr); } }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .card h2 { margin: 0; font-size: 15px; font-weight: 700; padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card h2 small { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+  /* room */
+  .room { position: relative; background: #07090e; container-type: inline-size; }
+  .room canvas { display: block; width: 100%; height: auto; aspect-ratio: 480 / 380; image-rendering: pixelated; cursor: pointer; }
+  .ov { position: absolute; inset: 0; pointer-events: none; }
+  .tag { position: absolute; transform: translate(50%, 0); pointer-events: auto; cursor: pointer; border: 0; border-radius: 6px; font-family: inherit; white-space: nowrap;
+    font-size: clamp(9px, 2.3cqw, 13px); font-weight: 700; color: #f4efe2; background: rgba(8, 11, 18, 0.86); padding: 0.18em 0.6em; border-bottom: 0.2em solid var(--c); }
+  .tag span { font-weight: 400; opacity: 0.8; }
+  .tag.sel { background: #f0b44c; color: #2a1d08; }
+  .say { position: absolute; transform: translate(50%, -100%); width: max-content; max-width: min(260px, 30cqw); font-size: clamp(9px, 1.9cqw, 12.5px); line-height: 1.4; color: #1d1608;
+    background: #fffaf0; padding: 0.4em 0.6em; border-radius: 6px; box-shadow: 0 0 0 2px #1d1608, 3px 3px 0 rgba(0,0,0,0.35); pointer-events: none; animation: pop 160ms ease-out; }
+  .say.warn { background: #ffe9e6; } .say.good { background: #e6fbef; }
+  .say::after { content: ''; position: absolute; bottom: -6px; right: calc(50% - 5px); border: 5px solid transparent; border-top-color: inherit; border-bottom: 0; }
+  .say::after { border-top-color: #fffaf0; } .say.warn::after { border-top-color: #ffe9e6; } .say.good::after { border-top-color: #e6fbef; }
+  .wait { position: absolute; transform: translate(50%, 0); max-width: 30cqw; text-align: center; font-size: clamp(8px, 1.7cqw, 11.5px); color: #d7d2c4; background: rgba(8, 11, 18, 0.66); padding: 0.1em 0.5em; border-radius: 5px; pointer-events: none; line-height: 1.35; }
+  @keyframes pop { from { opacity: 0; transform: translate(50%, -90%); } to { opacity: 1; transform: translate(50%, -100%); } }
+  .banner { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: #c23a3a; color: #fff; font-weight: 700; padding: 4px 12px; border-radius: 8px; font-size: 13px; display: none; }
+  /* agents */
+  .agentrow { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: start; width: 100%; text-align: start; background: none; border: 0; border-bottom: 1px solid var(--line); color: inherit; padding: 10px 16px; cursor: pointer; }
+  .agentrow:hover, .agentrow.sel { background: var(--surface-2); }
+  .av { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; color: #111; }
+  .agentrow b { font-size: 14px; } .agentrow .t { color: var(--muted); font-size: 12.5px; }
+  .agentrow .a { font-size: 13px; margin-top: 3px; line-height: 1.45; }
+  .st { font-size: 11.5px; border-radius: 999px; padding: 2px 8px; font-weight: 600; white-space: nowrap; }
+  .st.working { background: color-mix(in srgb, var(--up) 18%, transparent); color: var(--up); }
+  .st.idle { background: var(--surface-2); color: var(--ink-2); }
+  .st.error { background: color-mix(in srgb, var(--down) 18%, transparent); color: var(--down); }
+  .st.paused { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .hist { list-style: none; margin: 0; padding: 8px 16px 12px; display: grid; gap: 6px; font-size: 12.5px; color: var(--ink-2); max-height: 240px; overflow: auto; }
+  .hist time { color: var(--muted); margin-inline-end: 6px; }
+  /* tables / log */
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+  .scroll { overflow: auto; max-height: 380px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: start; color: var(--muted); font-weight: 500; font-size: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .log { list-style: none; margin: 0; padding: 0; }
+  .log li { display: grid; grid-template-columns: 52px 1fr; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 1.45; }
+  .log time { color: var(--muted); font-size: 12px; }
+  .log .who { font-weight: 700; margin-inline-end: 4px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); border-radius: 999px; padding: 2px 9px; font-size: 12px; cursor: pointer; }
+  .chip[aria-pressed='true'] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .quotes { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .q { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; min-width: 150px; }
+  .q b { font-size: 13px; } .q .p { font-size: 16px; font-weight: 700; } .q .f { color: var(--muted); font-size: 11.5px; }
+  .empty { color: var(--muted); padding: 22px 16px; text-align: center; font-size: 13px; }
+  .curve { padding: 8px 12px 12px; }
+  .note { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .offline { display: none; background: color-mix(in srgb, var(--down) 15%, var(--surface)); border: 1px solid var(--down); color: var(--ink); border-radius: 12px; padding: 10px 14px; }
+  @media (prefers-reduced-motion: reduce) { .say { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>חדר המסחר — פיוצ'רס</h1>
+      <div class="sub">שישה סוכנים, לכל אחד תפקיד אמיתי. דמות זזה רק כשהיא באמת מבצעת פעולה.</div>
+    </div>
+    <div class="btns">
+      <span class="pill"><span class="dot" id="conn"></span><span id="connText">מתחבר…</span></span>
+      <span class="pill" id="mode">נייר · מחירים וספר פקודות אמיתיים מ-Binance</span>
+      <button class="btn" id="pauseBtn" type="button">השהה מסחר</button>
+      <button class="btn danger" id="closeBtn" type="button">סגור את כל הפוזיציות</button>
+      <a class="btn" href="/api/report" target="_blank" rel="noopener" style="display:inline-grid;place-items:center;text-decoration:none">דוח שבועי</a>
+    </div>
+  </header>
+  <div class="offline" id="offline" role="alert">אין חיבור לבוט. ודא שהוא רץ (<span class="num">npm run futures</span> או <span class="num">docker compose up -d futures</span>) — הדף מתחבר מחדש לבד.</div>
+  <div class="quotes" id="quotes" aria-label="מחירים"></div>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="main">
+    <section class="card">
+      <h2>החדר <small id="roomSub">לחיצה על סוכן מציגה מה הוא עושה</small></h2>
+      <div class="room" id="room">
+        <canvas id="cv" role="img" aria-label="חדר המסחר: שישה סוכנים בעמדות שלהם. רשימה נגישה של כל סוכן ומה הוא עושה נמצאת בצד."></canvas>
+        <div class="ov" id="ov"></div>
+        <div class="banner" id="banner"></div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>הסוכנים <small>מה כל אחד עשה באמת</small></h2>
+      <div id="agents"></div>
+      <div id="agentDetail"></div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>פוזיציות פתוחות <small id="posSub"></small></h2>
+      <div class="scroll" id="positions"></div>
+    </section>
+    <section class="card">
+      <h2>עקומת הון <small id="curveSub"></small></h2>
+      <div class="curve" id="curve"></div>
+    </section>
+  </div>
+  <div class="grid2">
+    <section class="card">
+      <h2>יומן פעולות <span class="filters" id="filters"></span></h2>
+      <div class="scroll"><ol class="log" id="log" aria-live="polite"></ol></div>
+    </section>
+    <section class="card">
+      <h2>עסקאות שנסגרו <small id="tradeSub"></small></h2>
+      <div class="scroll" id="trades"></div>
+    </section>
+  </div>
+  <p class="note">מצב נייר: כל המחירים, המימון, הנרות וספרי הפקודות נמשכים בזמן אמת מ-Binance USDⓈ-M; הביצוע מדומה דרך ספר הפקודות האמיתי עם עמלת taker, מימון וחיסול לפי מרג׳ין מבודד. אין כאן הבטחה לרווח — זו תקופת בדיקה לפני החלטה על כסף אמיתי.</p>
+</div>
+
+<script>
+(() => {
+  // ============================================================ model
+  const COLORS = { scout: '#5ab0ff', analyst: '#c38bff', risk: '#f0b44c', trader: '#3ddc84', treasurer: '#ffb4a8', reporter: '#9fd3ff' };
+  const ORDER = ['scout', 'analyst', 'risk', 'trader', 'treasurer', 'reporter'];
+  const W = 480, H = 380, R = 2;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // 3×2 cubicles, read right-to-left: the work flows scout → analyst → risk, then trader → treasurer → reporter
+  const CELL = {};
+  ORDER.forEach((id, i) => { const c = i % 3, r = Math.floor(i / 3); const x0 = W - (c + 1) * 160, y0 = r * 190; CELL[id] = { x0, y0, cx: x0 + 80, floor: y0 + 176 }; });
+  const LOOK = {
+    scout: { skin: '#dca577', hair: '#2b1d12', shirt: '#3a7bd5', pants: '#2c3550', style: 0, glasses: true },
+    analyst: { skin: '#f3c9a2', hair: '#b8472c', shirt: '#8e5bd0', pants: '#23304a', style: 1, glasses: false },
+    risk: { skin: '#b07448', hair: '#161616', shirt: '#f0b44c', pants: '#3d2c22', style: 4, glasses: true },
+    trader: { skin: '#f7dcc2', hair: '#6b3b1d', shirt: '#48a868', pants: '#1f2a2a', style: 2, glasses: false },
+    treasurer: { skin: '#c98d5e', hair: '#2b1d12', shirt: '#d64f8c', pants: '#4a4f5c', style: 1, glasses: false },
+    reporter: { skin: '#f3c9a2', hair: '#ece6d6', shirt: '#2fb3b3', pants: '#2c3550', style: 3, glasses: true },
+  };
+  const people = {};
+  for (const id of ORDER) people[id] = { id, x: CELL[id].cx - 22, y: CELL[id].floor, face: 1, path: [], pose: 'sit', carry: null, until: 0, shake: 0 };
+  let S = null, lastSeq = -1, selected = null, filter = '', particles = [], flash = [];
+
+  const $ = (id) => document.getElementById(id);
+  const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt !== undefined) e.textContent = txt; return e; };
+  const usd = (v) => `${v < 0 ? '-' : ''}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const pct = (v, d = 2) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(d)}%`;
+  const price = (v) => v >= 1000 ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : v >= 1 ? v.toFixed(3) : v.toPrecision(4);
+  const coin = (s) => s.replace(/USDT$/, '');
+  const ago = (t) => { const s = Math.max(0, Math.round(((S?.now ?? Date.now()) - t) / 1000)); return s < 60 ? `${s} שנ׳` : s < 3600 ? `${Math.round(s / 60)} דק׳` : `${Math.round(s / 3600)} ש׳`; };
+  const clock = (t) => new Date(t).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+
+  // ============================================================ canvas
+  const cv = $('cv'); cv.width = W * R; cv.height = H * R;
+  const ctx = cv.getContext('2d');
+  const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+
+  function drawCell(id, t) {
+    const { x0, y0, floor } = CELL[id];
+    const a = S?.agents.find((g) => g.id === id);
+    const working = a && a.status === 'working';
+    // walls, skirting, floor
+    px(x0, y0, 160, 190, '#1b2230'); px(x0 + 3, y0 + 3, 154, 168, ['#26324a', '#2f2a44', '#3a3222', '#1f3a2c', '#3a2630', '#1f3440'][ORDER.indexOf(id)]);
+    for (let x = x0 + 8; x < x0 + 156; x += 12) px(x, y0 + 8, 1, 150, 'rgba(255,255,255,0.03)');
+    px(x0 + 3, floor, 154, 14, '#5a3d27'); for (let x = x0 + 3; x < x0 + 157; x += 14) px(x, floor, 1, 14, 'rgba(0,0,0,0.3)');
+    px(x0 + 3, floor - 3, 154, 3, 'rgba(0,0,0,0.25)');
+    // station furniture (desk + chair on the right of every cell, prop on the left)
+    const dx = CELL[id].cx - 8;
+    px(dx - 4, floor - 26, 58, 4, '#9b7650'); px(dx - 2, floor - 22, 3, 22, '#6d4a2d'); px(dx + 49, floor - 22, 3, 22, '#6d4a2d');
+    px(dx - 36, floor - 14, 14, 4, '#34507a'); px(dx - 34, floor - 34, 3, 22, '#2a3b58'); px(dx - 31, floor - 10, 2, 10, '#2a3b58');
+    const k = Math.floor(t * 4);
+    if (id === 'scout') {
+      for (let i = 0; i < 3; i++) { const mx = dx + 2 + i * 17; px(mx, floor - 46, 15, 16, '#0e1320'); px(mx + 6, floor - 30, 3, 4, '#0e1320');
+        const q = S?.quotes[i]; const up = q ? (i + k) % 2 : 0;
+        for (let b = 0; b < 5; b++) { const h = 3 + ((b * 7 + i * 3 + (working ? k : 0)) % 8); px(mx + 2 + b * 3, floor - 33 - h, 2, h, (b + (working ? k : 0)) % 3 ? '#3ddc84' : '#ff6b6b'); }
+        void up; }
+      // world map with pulsing exchange dot
+      px(x0 + 14, y0 + 30, 50, 30, '#123049'); px(x0 + 20, y0 + 36, 12, 8, '#2f6b52'); px(x0 + 36, y0 + 34, 16, 12, '#2f6b52'); px(x0 + 44, y0 + 48, 8, 6, '#2f6b52');
+      if (working && !reduced && k % 2) px(x0 + 40, y0 + 38, 3, 3, '#f0b44c');
+    }
+    if (id === 'analyst') {
+      // whiteboard with the real last 48 closes of the symbol she is analysing
+      px(x0 + 10, y0 + 22, 92, 58, '#eef1f5'); px(x0 + 8, y0 + 20, 96, 3, '#8a8f98'); px(x0 + 8, y0 + 80, 96, 3, '#8a8f98');
+      const last = S?.events.filter((e) => e.agent === 'analyst' && e.symbol).at(-1)?.symbol ?? a?.history?.[0]?.text?.split(':')[0] + 'USDT';
+      const sp = S?.sparks?.[last] ?? S?.sparks?.BTCUSDT;
+      if (sp && sp.length > 2) {
+        const lo = Math.min(...sp), hi = Math.max(...sp), n = sp.length;
+        for (let i = 1; i < n; i++) { const x1 = x0 + 14 + ((i - 1) / (n - 1)) * 84, x2 = x0 + 14 + (i / (n - 1)) * 84; const y1 = y0 + 74 - ((sp[i - 1] - lo) / (hi - lo || 1)) * 46, y2 = y0 + 74 - ((sp[i] - lo) / (hi - lo || 1)) * 46;
+          const steps = Math.max(1, Math.ceil(Math.abs(x2 - x1))); for (let s = 0; s <= steps; s++) px(x1 + ((x2 - x1) * s) / steps, y1 + ((y2 - y1) * s) / steps, 1, 1, sp.at(-1) >= sp[0] ? '#148a50' : '#c23a3a'); }
+      }
+      px(dx + 8, floor - 38, 26, 12, '#0e1320'); px(dx + 10, floor - 36, 22, 8, '#1d3a5f');
+    }
+    if (id === 'risk') {
+      px(dx + 8, floor - 34, 16, 8, '#2b2f38'); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) px(dx + 10 + i * 5, floor - 32 + j * 3, 3, 2, '#c9d1de'); // calculator
+      px(dx + 30, floor - 44, 2, 18, '#8a8f98'); px(dx + 22, floor - 44, 18, 2, '#8a8f98'); px(dx + 22, floor - 40, 6, 2, '#f0b44c'); px(dx + 34, floor - 40, 6, 2, '#f0b44c'); // scales
+      px(x0 + 14, y0 + 28, 44, 50, '#f6f6f2'); px(x0 + 18, y0 + 34, 36, 3, '#c23a3a'); for (let i = 0; i < 5; i++) px(x0 + 18, y0 + 42 + i * 7, 30 - i * 3, 2, '#8a8f98'); // limits sheet
+    }
+    if (id === 'trader') {
+      px(dx + 4, floor - 44, 36, 18, '#0e1320'); px(dx + 6, floor - 42, 32, 14, working && !reduced && k % 2 ? '#0f3a26' : '#101a2a');
+      px(dx + 42, floor - 32, 6, 6, '#3ddc84'); px(dx + 42, floor - 40, 6, 6, '#ff6b6b');
+      px(x0 + 20, y0 + 40, 12, 10, '#f0b44c'); px(x0 + 25, y0 + 36, 2, 4, '#a8761f'); // bell
+      const pos = S?.positions?.length ?? 0; for (let i = 0; i < 3; i++) px(x0 + 44 + i * 12, y0 + 38, 9, 14, i < pos ? '#3ddc84' : '#2a3244'); // position lights
+    }
+    if (id === 'treasurer') {
+      px(x0 + 12, floor - 44, 36, 44, '#4a4f5c'); px(x0 + 14, floor - 42, 32, 40, '#6c7280'); px(x0 + 28, floor - 26, 6, 6, '#c9d1de'); // safe
+      const coins = Math.max(1, Math.min(8, Math.round(((S?.account.equity ?? 2500) / (S?.config.capital ?? 2500)) * 5)));
+      for (let i = 0; i < coins; i++) px(dx + 30, floor - 28 - i * 2, 10, 2, i % 2 ? '#f0b44c' : '#d4a03a');
+      px(dx + 6, floor - 30, 18, 4, '#f4f0e4'); px(dx + 6, floor - 31, 18, 1, '#8a3a2a'); // ledger
+    }
+    if (id === 'reporter') {
+      px(dx + 8, floor - 34, 24, 8, '#2b2f38'); px(dx + 12, floor - 42, 16, 8, '#f4f0e4'); // typewriter + paper
+      px(x0 + 12, y0 + 26, 60, 44, '#a67b4b'); const reports = Math.min(6, S?.counts?.report ?? 0); for (let i = 0; i < 6; i++) px(x0 + 16 + (i % 3) * 18, y0 + 30 + Math.floor(i / 3) * 20, 14, 16, i < reports ? '#fffaf0' : 'rgba(0,0,0,0.15)');
+    }
+    // status lamp above the cell (colour + text are shown in the tag too)
+    const lamp = !a ? '#555' : a.status === 'working' ? '#3ddc84' : a.status === 'error' ? '#ff6b6b' : a.status === 'paused' ? '#f5c451' : '#56607a';
+    px(x0 + 146, y0 + 10, 6, 6, lamp);
+  }
+
+  function drawPerson(p, t) {
+    const L = LOOK[p.id], x = Math.round(p.x), y = Math.round(p.y), f = p.face, PS = 1.5;
+    ctx.setTransform(R * PS, 0, 0, R * PS, -x * R * (PS - 1), -y * R * (PS - 1));
+    const P = (dx, dy, w, h, c) => px(f > 0 ? x + dx : x - dx - w, y + dy, w, h, c);
+    const tick = reduced ? 0 : t, pose = p.pose;
+    const sit = pose === 'type' || pose === 'sit' || pose === 'rest';
+    const wf = pose === 'walk' ? Math.floor(tick * 8) % 4 : 0;
+    px(x - 6, y - 1, 12, 2, 'rgba(0,0,0,0.3)');
+    if (sit) { P(-3, -8, 9, 3, L.pants); P(4, -8, 3, 8, L.pants); P(4, -1, 4, 1, '#111'); }
+    else { const a = wf === 1 ? 2 : wf === 3 ? -2 : 0; P(-3 + a, -6, 3, 6, L.pants); P(1 - a, -6, 3, 6, L.pants); P(-3 + a, -1, 4, 1, '#111'); P(1 - a, -1, 4, 1, '#111'); }
+    const top = (sit ? -22 : -21 + (wf % 2 ? -1 : 0)) + (pose === 'rest' ? 1 : 0);
+    const lean = pose === 'rest' ? -1 : 0;
+    P(-4 + lean, top + 8, 9, 8, L.shirt);
+    const hx = p.shake && !reduced ? (Math.floor(t * 12) % 2 ? 1 : -1) : 0;
+    P(-4 + lean + hx, top, 8, 8, L.skin);
+    if (L.style === 0) { P(-4 + lean + hx, top - 1, 8, 3, L.hair); P(-4 + lean + hx, top + 2, 2, 3, L.hair); }
+    else if (L.style === 1) { P(-5 + lean + hx, top - 1, 10, 3, L.hair); P(-5 + lean + hx, top + 2, 3, 8, L.hair); }
+    else if (L.style === 2) { P(-4 + lean + hx, top - 1, 8, 3, L.hair); P(-2 + lean + hx, top - 4, 4, 3, L.hair); }
+    else if (L.style === 3) { P(-4 + lean + hx, top - 2, 8, 3, '#34507a'); P(3 + lean + hx, top, 3, 1, '#34507a'); }
+    else P(-4 + lean + hx, top, 8, 2, L.hair);
+    P(2 + lean + hx, top + 3, 1, 1, '#111');
+    if (L.glasses) P(0 + lean + hx, top + 3, 4, 1, '#111');
+    P(1 + lean + hx, top + 6, 2, 1, '#8a3a2a');
+    const k = Math.floor(tick * 10) % 2;
+    const arm = (dx, dy, w, h) => P(dx, dy, w, h, L.shirt), hand = (dx, dy) => P(dx, dy, 2, 2, L.skin);
+    if (pose === 'type') { arm(4, top + 10, 5, 2); hand(9, top + 10 + k); }
+    else if (pose === 'point') { const a = Math.floor(tick * 1.5) % 2; arm(4, top + 4 - a * 3, 2, 8); hand(5, top + 2 - a * 3); }
+    else if (pose === 'rest') { arm(-5, top + 2, 2, 8); hand(-5, top); }
+    else if (pose === 'walk' || pose === 'stand') { arm(4, top + 9, 2, 7); hand(4, top + 16); }
+    else { arm(4, top + 9, 2, 7); hand(4, top + 16); }
+    if (p.carry) { P(5, top + 8, 7, 8, p.carry === 'reject' ? '#ffd2cc' : '#fffaf0'); P(6, top + 10, 5, 1, p.carry === 'good' ? '#148a50' : p.carry === 'reject' ? '#c23a3a' : '#8a8f98'); P(6, top + 12, 4, 1, '#8a8f98'); }
+    const a = S?.agents.find((g) => g.id === p.id);
+    if (a && a.status === 'error') { px(x - 3, y + top - 12, 7, 8, '#ff6b6b'); px(x, y + top - 11, 1, 4, '#fff'); px(x, y + top - 6, 1, 1, '#fff'); }
+    if (a && a.status === 'idle' && pose === 'rest' && !reduced) { const z = Math.floor(t * 0.8) % 3; for (let i = 0; i <= z; i++) px(x - 8 - i * 3, y + top - 4 - i * 4, 2, 2, 'rgba(220,220,230,0.7)'); }
+    if (selected === p.id) { const ay = y + top - 10 + (reduced ? 0 : Math.round(Math.sin(t * 4))); px(x - 2, ay - 3, 5, 2, '#f0b44c'); px(x - 1, ay - 1, 3, 2, '#f0b44c'); }
+    ctx.setTransform(R, 0, 0, R, 0, 0);
+  }
+
+  // behaviour: poses come only from the agent's real state; walking happens only on a real hand-off
+  function update(dt, t) {
+    const now = Date.now();
+    for (const p of Object.values(people)) {
+      if (p.shake) p.shake = Math.max(0, p.shake - dt);
+      if (p.path.length) {
+        const g = p.path[0], d = g.x - p.x, step = 70 * dt;
+        if (Math.abs(d) <= step && Math.abs(g.y - p.y) <= step) { p.x = g.x; p.y = g.y; p.path.shift(); if (g.hold) { p.until = now + g.hold; p.pose = 'stand'; p.face = g.face ?? p.face; if (g.drop) { p.carry = null; } } }
+        else { if (Math.abs(g.y - p.y) > step) p.y += Math.sign(g.y - p.y) * step; else p.x += Math.sign(d) * step; p.face = Math.sign(d) || p.face; p.pose = 'walk'; }
+        if (p.path.length && p.until > now) { p.pose = 'stand'; }
+        continue;
+      }
+      if (p.until > now) continue;
+      const a = S?.agents.find((g) => g.id === p.id);
+      p.x = CELL[p.id].cx - 22; p.y = CELL[p.id].floor; p.face = 1;
+      p.pose = !a ? 'sit' : a.status === 'working' ? (p.id === 'analyst' ? 'type' : 'type') : 'rest';
+    }
+    for (let i = particles.length - 1; i >= 0; i--) { const q = particles[i]; q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 80 * dt; if (q.life <= 0) particles.splice(i, 1); }
+  }
+
+  // walk from own cell to the receiver's cell, hand over, walk back
+  function handoff(from, to, carry) {
+    const p = people[from], a = CELL[from], b = CELL[to];
+    if (!p || !b || p.path.length) return;
+    p.carry = carry;
+    const pts = [];
+    if (a.y0 !== b.y0) { const midY = a.floor; pts.push({ x: a.x0 + (b.x0 < a.x0 ? 2 : 158), y: a.floor }); pts.push({ x: a.x0 + (b.x0 < a.x0 ? 2 : 158), y: b.floor }); void midY; }
+    pts.push({ x: b.cx + (b.cx < a.cx ? 30 : -46), y: b.floor, hold: 1500, drop: true, face: b.cx < a.cx ? -1 : 1 });
+    if (a.y0 !== b.y0) { pts.push({ x: a.x0 + (b.x0 < a.x0 ? 2 : 158), y: b.floor }); pts.push({ x: a.x0 + (b.x0 < a.x0 ? 2 : 158), y: a.floor }); }
+    pts.push({ x: a.cx - 22, y: a.floor });
+    if (reduced) { p.carry = null; return; }
+    p.path = pts;
+  }
+
+  function onEvent(e) {
+    if (e.type === 'candles') handoff('scout', 'analyst', 'paper');
+    else if (e.type === 'signal') handoff('analyst', 'risk', 'paper');
+    else if (e.type === 'approve') handoff('risk', 'trader', 'good');
+    else if (e.type === 'reject') { people.risk.shake = 1.2; }
+    else if (e.type === 'close') handoff('trader', 'treasurer', e.text.includes('נטו -') ? 'reject' : 'good');
+    else if (e.type === 'fill') { const c = CELL.trader; for (let i = 0; i < 14; i++) particles.push({ x: c.x0 + 26, y: c.y0 + 44, vx: (Math.random() - 0.5) * 60, vy: -Math.random() * 60, life: 0.9, c: '#f0b44c' }); }
+    else if (e.type === 'funding') { const c = CELL.treasurer; for (let i = 0; i < 10; i++) particles.push({ x: c.cx + 16, y: c.floor - 34, vx: (Math.random() - 0.5) * 40, vy: -Math.random() * 50, life: 1.1, c: '#f0b44c' }); }
+    else if (e.type === 'report') handoff('reporter', 'treasurer', 'paper');
+  }
+
+  let last = performance.now(), T = 0;
+  function frame(now) {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now; T += dt;
+    update(dt, T);
+    ctx.setTransform(R, 0, 0, R, 0, 0);
+    px(0, 0, W, H, '#0b0e14');
+    for (const id of ORDER) drawCell(id, T);
+    const list = Object.values(people).sort((a, b) => a.y - b.y);
+    for (const p of list) drawPerson(p, T);
+    for (const q of particles) px(q.x, q.y, 2, 2, q.c);
+    placeOverlay();
+    requestAnimationFrame(frame);
+  }
+
+  // ============================================================ overlay (tags, speech, waiting line)
+  const ov = $('ov'), tags = {}, says = {}, waits = {};
+  for (const id of ORDER) {
+    const t = el('button', 'tag'); t.type = 'button'; t.style.setProperty('--c', COLORS[id]); t.addEventListener('click', () => pick(id)); ov.append(t); tags[id] = t;
+    const w = el('div', 'wait'); ov.append(w); waits[id] = w;
+  }
+  function placeOverlay() {
+    for (const id of ORDER) {
+      const c = CELL[id], p = people[id];
+      tags[id].style.right = `${100 - (c.cx / W) * 100}%`; tags[id].style.top = `${((c.y0 + 6) / H) * 100}%`;
+      waits[id].style.right = `${100 - (c.cx / W) * 100}%`; waits[id].style.top = `${((c.y0 + 30) / H) * 100}%`;
+      const s = says[id];
+      if (s) { s.style.right = `${100 - (Math.min(W - 40, Math.max(40, p.x)) / W) * 100}%`; s.style.top = `${((p.y - 38) / H) * 100}%`; }
+    }
+  }
+  function renderOverlay() {
+    for (const a of S.agents) {
+      const st = a.status === 'working' ? 'עובד' : a.status === 'error' ? 'שגיאה' : a.status === 'paused' ? 'מושהה' : 'ממתין';
+      tags[a.id].textContent = ''; tags[a.id].append(document.createTextNode(`${a.name} `), el('span', '', `· ${a.title}`));
+      tags[a.id].setAttribute('aria-label', `${a.name}, ${a.title} — ${st}: ${a.status === 'working' ? a.action : a.waiting}`);
+      tags[a.id].classList.toggle('sel', selected === a.id);
+      const working = a.status === 'working';
+      waits[a.id].textContent = working ? '' : a.waiting;
+      waits[a.id].style.display = working || !a.waiting ? 'none' : '';
+      if (working && !says[a.id]) {
+        const s = el('div', 'say' + (/דחה|הפסד|סטופ|חוסל|שגיאה|עצירת/.test(a.action) ? ' warn' : /אישר|יעד|קיבלה|קנה|מכר/.test(a.action) ? ' good' : ''), a.action.length > 110 ? a.action.slice(0, 108) + '…' : a.action);
+        ov.append(s); says[a.id] = s;
+      } else if (working && says[a.id]) says[a.id].textContent = a.action.length > 110 ? a.action.slice(0, 108) + '…' : a.action;
+      else if (!working && says[a.id]) { says[a.id].remove(); delete says[a.id]; }
+    }
+    const b = $('banner');
+    if (S.account.halted) { b.style.display = 'block'; b.textContent = `עצירת חירום — ${S.account.halted}`; }
+    else if (S.account.paused) { b.style.display = 'block'; b.style.background = '#a86400'; b.textContent = 'המסחר מושהה — אין כניסות חדשות'; }
+    else b.style.display = 'none';
+  }
+  cv.addEventListener('click', (e) => {
+    const r = cv.getBoundingClientRect(); const mx = ((e.clientX - r.left) / r.width) * W, my = ((e.clientY - r.top) / r.height) * H;
+    const id = ORDER.find((k) => mx >= CELL[k].x0 && mx < CELL[k].x0 + 160 && my >= CELL[k].y0 && my < CELL[k].y0 + 190);
+    if (id) pick(id);
+  });
+  function pick(id) { selected = selected === id ? null : id; if (S) { renderOverlay(); renderAgents(); } }
+
+  // ============================================================ panels
+  function renderAgents() {
+    const box = $('agents'); box.textContent = '';
+    for (const a of S.agents) {
+      const r = el('button', 'agentrow' + (selected === a.id ? ' sel' : '')); r.type = 'button';
+      const av = el('span', 'av', a.name[0]); av.style.background = COLORS[a.id];
+      const mid = el('div'); const h = el('div'); h.append(el('b', '', a.name), el('span', 't', ` · ${a.title}`));
+      const working = a.status === 'working';
+      mid.append(h, el('div', 'a', working ? a.action : a.waiting), el('div', 't', `${a.done.toLocaleString('he-IL')} פעולות${a.actionAt ? ` · אחרונה לפני ${ago(a.actionAt)}` : ''}${a.errors ? ` · ${a.errors} שגיאות` : ''}`));
+      const st = el('span', 'st ' + a.status, working ? 'עובד עכשיו' : a.status === 'error' ? 'שגיאה' : a.status === 'paused' ? 'מושהה' : 'ממתין');
+      r.append(av, mid, st);
+      r.addEventListener('click', () => pick(a.id));
+      box.append(r);
+    }
+    const d = $('agentDetail'); d.textContent = '';
+    const a = S.agents.find((x) => x.id === selected);
+    if (a) {
+      const h = el('div'); h.style.cssText = 'padding:10px 16px 0;font-size:13px;color:var(--ink-2)'; h.append(el('b', '', `${a.name} — התפקיד: `), document.createTextNode(a.job));
+      const ul = el('ul', 'hist');
+      for (const x of a.history) { const li = el('li'); li.append(el('time', '', clock(x.t)), document.createTextNode(x.text)); ul.append(li); }
+      if (!a.history.length) ul.append(el('li', '', 'עוד לא ביצע פעולות.'));
+      d.append(h, ul);
+    }
+  }
+
+  function kpi(k, v, s, cls) { const x = el('div', 'kpi'); x.append(el('div', 'k', k)); const vv = el('div', 'v num' + (cls ? ' ' + cls : ''), v); x.append(vv); if (s) x.append(el('div', 's', s)); return x; }
+  function render() {
+    const A = S.account, st = S.stats;
+    const k = $('kpis'); k.textContent = '';
+    k.append(
+      kpi('הון', usd(A.equity), `התחלה ${usd(S.config.capital)} · הון קבוע`),
+      kpi('תשואה', pct(A.returnPct), `מאז ${new Date(S.startedAt).toLocaleDateString('he-IL')}`, A.returnPct >= 0 ? 'up' : 'down'),
+      kpi('רווח פתוח', usd(A.unrealized), `מרג׳ין בשימוש ${usd(A.marginUsed)}`, A.unrealized >= 0 ? 'up' : 'down'),
+      kpi('היום (UTC)', usd(A.dayPnl), `מגבלה יומית ${(S.config.dailyLoss * 100).toFixed(0)}%`, A.dayPnl >= 0 ? 'up' : 'down'),
+      kpi('ירידה מהשיא', `${(A.drawdown * 100).toFixed(1)}%`, `עצירה ב-${(S.config.maxDrawdown * 100).toFixed(0)}%`, A.drawdown > S.config.maxDrawdown * 0.6 ? 'down' : ''),
+      kpi('עסקאות', `${st.trades}`, st.trades ? `הצלחה ${(st.winRate * 100).toFixed(0)}% · ממוצע ${st.avgR.toFixed(2)}R` : 'עוד לא נסגרו עסקאות'),
+      kpi('עלויות', usd(A.feesPaid), `מימון נטו ${usd(A.fundingNet)}`),
+    );
+    const q = $('quotes'); q.textContent = '';
+    for (const x of S.quotes) {
+      const sp = S.sparks?.[x.symbol]; const ch = sp && sp.length > 1 ? x.mark / sp[0] - 1 : 0;
+      const c = el('div', 'q'); c.append(el('b', '', coin(x.symbol)), el('div', 'p num', price(x.mark)), el('div', 'f', `12 שעות ${pct(ch)} · מימון ${(x.funding * 100).toFixed(4)}%`));
+      c.querySelector('.f').classList.add(ch >= 0 ? 'up' : 'down'); q.append(c);
+    }
+    // positions
+    const pos = $('positions'); pos.textContent = ''; $('posSub').textContent = `${S.positions.length} מתוך ${S.config.maxPositions}`;
+    if (!S.positions.length) pos.append(el('div', 'empty', 'אין פוזיציות פתוחות. רוני מחכה לאישור ממנהל הסיכונים.'));
+    else {
+      const t = el('table'); t.innerHTML = '<thead><tr><th>חוזה</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>מחיר</th><th>רווח</th><th>סטופ</th><th>יעד</th><th>מינוף</th><th>חיסול</th></tr></thead>';
+      const tb = el('tbody');
+      for (const p of S.positions) {
+        const tr = el('tr');
+        [coin(p.symbol), p.side === 'LONG' ? 'לונג' : 'שורט', String(p.qty), price(p.entry), price(p.mark)].forEach((v, i) => tr.append(el('td', i > 1 ? 'num' : '', v)));
+        const u = el('td', 'num ' + (p.upnl >= 0 ? 'up' : 'down'), `${usd(p.upnl)} (${p.upnlR >= 0 ? '+' : ''}${p.upnlR.toFixed(2)}R)`); tr.append(u);
+        tr.append(el('td', 'num', price(p.stop) + (p.beMoved ? ' ↑' : '')), el('td', 'num', price(p.target)), el('td', 'num', `${p.lev}x`), el('td', 'num', `${price(p.liq)} (${(p.liqDist * 100).toFixed(1)}%)`));
+        tb.append(tr);
+      }
+      t.append(tb); pos.append(t);
+    }
+    // trades
+    const tr = $('trades'); tr.textContent = ''; $('tradeSub').textContent = st.trades ? `נטו ${usd(st.net)}` : '';
+    if (!S.trades.length) tr.append(el('div', 'empty', 'עוד לא נסגרו עסקאות.'));
+    else {
+      const t = el('table'); t.innerHTML = '<thead><tr><th>נסגר</th><th>חוזה</th><th>כיוון</th><th>כניסה → יציאה</th><th>נטו</th><th>R</th><th>סיבה</th></tr></thead>';
+      const tb = el('tbody');
+      for (const x of S.trades) {
+        const r = el('tr');
+        r.append(el('td', '', new Date(x.closedAt).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })), el('td', '', coin(x.symbol)), el('td', '', x.side === 'LONG' ? 'לונג' : 'שורט'), el('td', 'num', `${price(x.entry)} → ${price(x.exit)}`), el('td', 'num ' + (x.net >= 0 ? 'up' : 'down'), usd(x.net)), el('td', 'num', x.r.toFixed(2)), el('td', '', x.reason));
+        tb.append(r);
+      }
+      t.append(tb); tr.append(t);
+    }
+    // log
+    const f = $('filters');
+    if (!f.children.length) {
+      for (const [id, label] of [['', 'הכל'], ...S.agents.map((a) => [a.id, a.name])]) {
+        const c = el('button', 'chip', label); c.type = 'button'; c.setAttribute('aria-pressed', String(filter === id));
+        c.addEventListener('click', () => { filter = id; [...f.children].forEach((x) => x.setAttribute('aria-pressed', String(x === c))); renderLog(); });
+        f.append(c);
+      }
+    }
+    renderLog();
+    renderCurve();
+    renderAgents();
+    renderOverlay();
+  }
+  function renderLog() {
+    const log = $('log'); log.textContent = '';
+    const names = Object.fromEntries(S.agents.map((a) => [a.id, a.name]));
+    const list = S.events.filter((e) => !filter || e.agent === filter).slice(-80).reverse();
+    if (!list.length) log.append(el('li', 'empty', 'אין עדיין פעולות ביומן.'));
+    for (const e of list) {
+      const li = el('li'); const who = el('span', 'who', names[e.agent] ?? e.agent); who.style.color = COLORS[e.agent];
+      const txt = el('span'); txt.append(who, document.createTextNode(e.text));
+      if (e.type === 'error' || e.type === 'halt' || e.type === 'reject') txt.classList.add('down');
+      li.append(el('time', '', clock(e.t)), txt); log.append(li);
+    }
+  }
+  function renderCurve() {
+    const box = $('curve'); box.textContent = '';
+    const pts = [...S.curve, { t: S.now, e: S.account.equity }];
+    if (pts.length < 2) { box.append(el('div', 'empty', 'העקומה תתחיל להתמלא אחרי 15 דקות של פעילות.')); return; }
+    const w = 600, h = 180, lo = Math.min(S.config.capital, ...pts.map((p) => p.e)), hi = Math.max(S.config.capital, ...pts.map((p) => p.e));
+    const t0 = pts[0].t, t1 = pts.at(-1).t;
+    const X = (t) => ((t - t0) / Math.max(1, t1 - t0)) * (w - 50) + 45, Y = (e) => h - 20 - ((e - lo) / Math.max(1e-9, hi - lo)) * (h - 36);
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.e).toFixed(1)}`).join('');
+    const up = S.account.equity >= S.config.capital;
+    box.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="עקומת הון: מ-${usd(pts[0].e)} ל-${usd(S.account.equity)}" style="direction:ltr;display:block">
+      <line x1="45" x2="${w - 5}" y1="${Y(S.config.capital)}" y2="${Y(S.config.capital)}" stroke="var(--line)" stroke-dasharray="4 4"/>
+      <text x="40" y="${Y(hi) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(hi)}</text>
+      <text x="40" y="${Y(lo) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(lo)}</text>
+      <path d="${d}" fill="none" stroke="${up ? 'var(--up)' : 'var(--down)'}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+    $('curveSub').textContent = `${usd(S.account.equity)} · שיא ${usd(S.account.peak)}`;
+  }
+
+  // ============================================================ data
+  async function poll() {
+    try {
+      const r = await fetch('/api/state', { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status);
+      S = await r.json();
+      const fresh = S.now - S.lastScanOk < 60e3;
+      $('conn').className = 'dot ' + (fresh ? 'ok' : 'bad');
+      $('connText').textContent = S.mode === 'demo' ? `הדגמה · ${clock(S.now)}` : fresh ? `מחובר ל-Binance · ${clock(S.lastScanOk)}` : 'אין נתונים עדכניים מ-Binance';
+      const m = $('mode');
+      if (S.mode === 'demo') { m.textContent = 'הדגמה — שוק סינתטי במהירות ×30, לא נתונים אמיתיים'; m.style.color = 'var(--warn)'; m.style.borderColor = 'var(--warn)'; }
+      $('offline').style.display = 'none';
+      $('pauseBtn').textContent = S.account.paused || S.account.halted ? 'חדש מסחר' : 'השהה מסחר';
+      const newest = S.events.at(-1)?.seq ?? 0;
+      if (lastSeq >= 0) for (const e of S.events) if (e.seq > lastSeq) onEvent(e);
+      lastSeq = newest;
+      render();
+    } catch {
+      $('conn').className = 'dot bad'; $('connText').textContent = 'אין חיבור לבוט'; $('offline').style.display = 'block';
+    }
+  }
+  async function control(action, ask) {
+    if (ask && !confirm(ask)) return;
+    const r = await fetch('/api/control', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action }) }).catch(() => null);
+    if (!r || !r.ok) alert('הפעולה נכשלה (הבקרה עובדת רק מאותו מחשב שעליו רץ הבוט).');
+    poll();
+  }
+  $('pauseBtn').addEventListener('click', () => S && (S.account.paused || S.account.halted ? control('resume', S.account.halted ? 'לחדש מסחר אחרי עצירת חירום? השיא יאופס להון הנוכחי.' : '') : control('pause')));
+  $('closeBtn').addEventListener('click', () => control('close-all', 'לסגור עכשיו את כל הפוזיציות במחיר השוק?'));
+
+  poll(); setInterval(poll, 2000);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

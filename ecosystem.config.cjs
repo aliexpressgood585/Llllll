@@ -10,5 +10,14 @@ module.exports = {
       restart_delay: 10000,
       env: { BOT_MODE: 'paper', BOT_CAPITAL: '2500' },
     },
+    {
+      name: 'futures-desk',
+      script: 'node_modules/.bin/tsx',
+      args: 'futures/index.ts',
+      autorestart: true,
+      max_restarts: 50,
+      restart_delay: 10000,
+      env: { FUT_CAPITAL: '2500' },
+    },
   ],
 };

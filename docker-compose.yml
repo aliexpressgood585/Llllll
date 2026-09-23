@@ -1,5 +1,6 @@
 # docker compose up -d --build        → dashboard at http://localhost:8787
 # docker compose exec bot npm run report   → weekly evaluation report
+# docker compose up -d --build futures     → futures trading room at http://localhost:8788
 services:
   bot:
     build: .
@@ -12,3 +13,23 @@ services:
     ports:
       # published on localhost only — the control endpoint must never be exposed to the internet
       - "127.0.0.1:8787:8787"
+
+  futures:
+    build: .
+    restart: unless-stopped
+    command: ["npx", "tsx", "futures/index.ts"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      FUT_HOST: 0.0.0.0
+      FUT_PORT: "8788"
+      FUT_STATE_FILE: /data/futures-state.json
+      FUT_JOURNAL_FILE: /data/futures-trades.csv
+      FUT_REPORT_DIR: /data/futures-reports
+      # requests reach the container from the Docker bridge; the port itself is published on localhost only
+      FUT_ALLOW_REMOTE_CONTROL: "1"
+    volumes:
+      - ./bot-data:/data
+    ports:
+      - "127.0.0.1:8788:8788"

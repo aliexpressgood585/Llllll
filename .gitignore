@@ -13,3 +13,7 @@ bot-state.json
 bot-state.json.tmp
 bot-trades.csv
 bot-data/
+futures-state.json
+futures-state.json.tmp
+futures-trades.csv
+futures-reports/

@@ -17,7 +17,11 @@
     "report": "tsx bot/report-cli.ts",
     "office:dev": "vite --config office/vite.config.ts",
     "office:typecheck": "tsc --noEmit -p office/tsconfig.json",
-    "office:build": "tsc --noEmit -p office/tsconfig.json && vite build --config office/vite.config.ts && python3 office/build-artifact.py"
+    "office:build": "tsc --noEmit -p office/tsconfig.json && vite build --config office/vite.config.ts && python3 office/build-artifact.py",
+    "futures": "tsx futures/index.ts",
+    "test:futures": "tsx scripts/futures-fixture.ts",
+    "futures:report": "tsx futures/report-cli.ts",
+    "futures:demo": "tsx futures/demo.ts"
   },
   "dependencies": {
     "react": "^19.3.0",
