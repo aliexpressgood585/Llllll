@@ -26,6 +26,7 @@
   "include": [
     "src",
     "bot",
+    "futures",
     "vite.config.ts"
   ]
 }
